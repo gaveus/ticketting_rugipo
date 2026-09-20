@@ -27,7 +27,7 @@ function TrendPill({ value, invert }) {
   const good = invert ? up : !up;
   const cls = flat ? 'trend-pill--flat' : good ? 'trend-pill--good' : 'trend-pill--warn';
   return (
-    <span className={`trend-pill ${cls}`} title="Compared with the previous period of the same length">
+    <span className={`trend-pill ${cls}`} title="Measured against the previous period of the same length">
       {flat ? '–' : up ? '▲' : '▼'} {Math.abs(value)}%
     </span>
   );
@@ -81,9 +81,9 @@ export default function AdminOverview() {
 
   const quickActions = [
     ['🎫', 'View All Complaints', 'Every complaint, every stage', '/admin/tickets'],
-    ['⬆', isSuper ? 'Escalated Queue' : 'My Escalated Queue', 'What the seniors are handling', isSuper ? '/admin/tickets?status=escalated' : '/admin/escalations'],
+    ['⬆', isSuper ? 'With Senior Engineers' : 'My Escalations', 'Complaints the seniors are handling', isSuper ? '/admin/tickets?status=escalated' : '/admin/escalations'],
     ['💬', 'Student Questions', 'Live chats waiting for a reply', '/admin/inbox'],
-    ['📊', 'Reports & Analytics', 'Any day, month or year', '/admin/analytics'],
+    ['📊', 'Reports', 'Figures for any day, month or year', '/admin/analytics'],
   ];
 
   const activeLabel = RANGES.find((r) => r.key === range)?.label || 'Last 7 days';
@@ -127,7 +127,7 @@ export default function AdminOverview() {
                 <div>
                   <h3 className="panel-title" style={{ margin: 0 }}>Complaint trends</h3>
                   <p className="panel-sub" style={{ margin: 0 }}>
-                    Live from the database — {data?.period?.label || activeLabel}, compared with the period before it.
+                    Actual complaint figures for {data?.period?.label || activeLabel}, shown side by side with the previous period.
                   </p>
                 </div>
                 <Link className="btn btn--outline btn--sm" to="/admin/analytics">Full reports →</Link>
@@ -177,17 +177,17 @@ export default function AdminOverview() {
                 <div className="ov-trendrow">
                   <div className="ov-trendrow__item">
                     <span>New complaints</span>
-                    <strong>{t.createdNow ?? 0} <small className="muted">vs {t.createdPrev ?? 0} before</small></strong>
+                    <strong>{t.createdNow ?? 0} <small className="muted">— {t.createdPrev ?? 0} in the period before</small></strong>
                     <TrendPill value={t.created} invert />
                   </div>
                   <div className="ov-trendrow__item">
                     <span>Solved</span>
-                    <strong>{t.resolvedNow ?? 0} <small className="muted">vs {t.resolvedPrev ?? 0} before</small></strong>
+                    <strong>{t.resolvedNow ?? 0} <small className="muted">— {t.resolvedPrev ?? 0} in the period before</small></strong>
                     <TrendPill value={t.resolved} />
                   </div>
                   <div className="ov-trendrow__item">
                     <span>Sent to seniors</span>
-                    <strong>{t.escalatedNow ?? 0} <small className="muted">vs {t.escalatedPrev ?? 0} before</small></strong>
+                    <strong>{t.escalatedNow ?? 0} <small className="muted">— {t.escalatedPrev ?? 0} in the period before</small></strong>
                     <TrendPill value={t.escalated} invert />
                   </div>
                 </div>

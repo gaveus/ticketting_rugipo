@@ -3,18 +3,25 @@ import { Link, useSearchParams } from 'react-router-dom';
 import { api, useAuth, fmtDateTime } from '../auth.jsx';
 
 const ACTION_LABELS = {
-  'ticket.status': 'Status changed',
+  'ticket.status': 'Complaint stage changed',
   'ticket.reply': 'Replied to student',
-  'ticket.note': 'Internal note',
-  'ticket.assign': 'Ticket assigned',
-  'payment.verify': 'Payment verified',
-  'staff.create': 'Account created',
-  'staff.role': 'Role changed',
-  'staff.promote-super': 'Promoted to Super',
-  'staff.active': 'Account enabled/disabled',
+  'ticket.note': 'Internal note added',
+  'ticket.assign': 'Complaint assigned',
+  'payment.verify': 'Payment checked against records',
+  'staff.create': 'Staff account created',
+  'staff.role': 'Staff role changed',
+  'staff.promote-super': 'Granted Super ICT Support',
+  'staff.active': 'Account enabled or disabled',
+  'staff.reset-password': 'Password reset',
+  'staff.specialty': 'Senior desk changed',
   'masterdata.faculty.create': 'Faculty added',
   'masterdata.department.create': 'Department added',
-  'newsletter.broadcast': 'Newsletter broadcast',
+  'masterdata.category.toggle': 'Service shown or hidden',
+  'announcement.create': 'Homepage update posted',
+  'announcement.delete': 'Homepage update removed',
+  'inbox.reply': 'Replied to a student question',
+  'inbox.close': 'Conversation closed',
+  'newsletter.broadcast': 'Newsletter sent',
 };
 
 /** Audit trail — Super ICT Support only. Every staff action lands here. */
@@ -82,7 +89,7 @@ export default function AdminAudit() {
         </select>
       </div>
 
-      {data.entries.length === 0 && <div className="card"><p className="muted">No audit entries yet — they appear as staff work tickets.</p></div>}
+      {data.entries.length === 0 && <div className="card"><p className="muted">Nothing here yet — this fills up automatically as officers attend to complaints.</p></div>}
       {data.entries.length > 0 && (
         <div className="table-wrap">
           <table>

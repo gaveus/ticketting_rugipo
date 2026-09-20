@@ -211,7 +211,7 @@ export default function StaffTicket() {
             Explains <em>why</em> — this note is emailed to every Senior Engineer and stored on the escalation record.
             {isSuper ? ' Super ICT Support sees every desk.' : ''}
           </p>
-          <textarea rows={2} placeholder="e.g. Payment verified in Appiawave but portal record still missing after 48h — needs database-level fix."
+          <textarea rows={2} placeholder="e.g. Payment confirmed in Appiawave but the portal still shows unpaid after 48 hours — needs a senior engineer."
             value={actionNote} onChange={(e) => setActionNote(e.target.value)} />
           <div className="row mt" style={{ gap: 8 }}>
             <button className={`btn btn--escalate btn--sm ${busy ? 'btn--busy' : ''}`} disabled={busy} onClick={escalate}>

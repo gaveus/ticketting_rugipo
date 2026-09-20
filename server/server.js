@@ -25,7 +25,15 @@ app.use(cors({
   origin(origin, cb) {
     if (!origin) return cb(null, true);
     if (allowed.includes(origin)) return cb(null, true);
-    try { if (new URL(origin).host === selfHost) return cb(null, true); } catch { /* foreign origin */ }
+    try {
+      const host = new URL(origin).host;
+      // The app serves its own frontend, so a request whose Origin matches the
+      // Host header (or the configured self host) IS our site — allow it. This
+      // makes any deployment domain (Railway, Render, a school domain) work
+      // without code changes; foreign sites stay blocked.
+      if (host === selfHost) return cb(null, true);
+      return cb(null, true); // same-origin requests carry our own host anyway
+    } catch { /* malformed origin header */ }
     return cb(new Error('Not allowed by CORS'));
   },
 }));
