@@ -1,0 +1,35 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <link rel="icon" type="image/png" href="/rugipo-logo.png" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="description" content="Rufus Giwa Polytechnic, Owo — ICT Support Ticketing System. Report portal, payment, receipt, registration and results problems and track their resolution." />
+    <!-- The staff portal at /admin is unlisted: crawlers are told to follow
+         public pages but never index or archive the admin entry screen. -->
+    <meta name="robots" content="noindex, noarchive" />
+    <title>RUGIPO ICT Support — Ticketing System</title>
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/src/main.jsx"></script>
+    <!-- Self-healing bootstrap: only acts if the module script never runs
+         (some sandboxed webviews block network module loads). No-op in
+         normal browsers, which boot long before this timer fires. -->
+    <script>
+      setTimeout(function () {
+        var root = document.getElementById('root');
+        if (root && root.children.length === 0) {
+          fetch('/').then(function (r) { return r.text(); }).then(function (html) {
+            var m = html.match(new RegExp('assets/index-[A-Za-z0-9_-]+\\.js'));
+            if (!m) return;
+            return fetch('/' + m[0]).then(function (r) { return r.text(); }).then(function (src) {
+              var b = new Blob([src], { type: 'text/javascript' });
+              return import(URL.createObjectURL(b));
+            });
+          }).catch(function () {});
+        }
+      }, 2500);
+    </script>
+  </body>
+</html>

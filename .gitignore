@@ -1,0 +1,13 @@
+node_modules/
+data/
+server/uploads/
+server/.env
+client/dist/
+dist/
+*.log
+server-*.log
+server/*.log
+test-photo.png
+.DS_Store
+Thumbs.db
+DEPLOY.md
