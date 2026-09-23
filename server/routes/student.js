@@ -479,8 +479,12 @@ router.post('/tickets/:id/reply', async (req, res) => {
      VALUES (?, ?, 'student', ?, 'student')`, t.id, t.student_name, cleanText(message, 4000));
   await db.run(`UPDATE tickets SET updated_at = now() WHERE id = ?`, t.id);
   if (t.assigned_staff_id) {
-    await db.run(`INSERT INTO outbound_emails (ticket_id, to_email, subject, body, kind) VALUES
-                (?, (SELECT email FROM users WHERE id = ?), ?, ?, 'reply')`, t.id, t.assigned_staff_id, `New student reply on ${t.ticket_number}`, message.slice(0, 300));
+    const officer = await db.get('SELECT email FROM users WHERE id = ?', t.assigned_staff_id);
+    if (officer) {
+      await queueEmail({ ticketId: t.id, to: officer.email, kind: 'reply',
+        subject: `New student reply on ${t.ticket_number}`,
+        body: message.slice(0, 300) });
+    }
   }
   res.json({ ok: true });
 });

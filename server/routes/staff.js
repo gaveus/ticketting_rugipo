@@ -737,8 +737,9 @@ router.post('/tickets/:id/assign', async (req, res) => {
     await db.run(`UPDATE tickets SET assigned_staff_id = ?, status = ?, updated_at = now() WHERE id = ?`, staffId, newStatus, t.id);
     await db.run(`INSERT INTO ticket_status_history (ticket_id, old_status, new_status, changed_by, note)
                 VALUES (?, ?, ?, ?, ?)`, t.id, t.status, newStatus, req.user.full_name, `Assigned to ${staff.full_name}`);
-    await db.run(`INSERT INTO outbound_emails (ticket_id, to_email, subject, body, kind) VALUES (?, ?, ?, ?, 'assignment')`, t.id, staff.email, `Complaint ${t.ticket_number} assigned to you`,
-           `Hello ${staff.full_name},\n\n${req.user.full_name} assigned complaint ${t.ticket_number} to you.\nStudent: ${t.student_name} (${t.matric_no})\nIssue: ${t.department} — ${t.description?.slice(0, 140)}\n\nOpen the ICT Staff Portal to attend to it.\n\n— RUGIPO ICT Support`);
+    await queueEmail({ ticketId: t.id, to: staff.email, kind: 'assignment',
+      subject: `Complaint ${t.ticket_number} assigned to you`,
+      body: `Hello ${staff.full_name},\n\n${req.user.full_name} assigned complaint ${t.ticket_number} to you.\nStudent: ${t.student_name} (${t.matric_no})\nIssue: ${t.department} — ${t.description?.slice(0, 140)}\n\nOpen the ICT Staff Portal to attend to it.\n\n— RUGIPO ICT Support` });
   });
   await tx();
   audit(req, 'ticket.assign', t.id, { staffId });
