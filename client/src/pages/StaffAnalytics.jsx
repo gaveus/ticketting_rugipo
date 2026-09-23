@@ -4,6 +4,7 @@ import {
   PieChart, Pie, Cell, AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend,
 } from 'recharts';
 import { api, useAuth, fmtDate, fmtDateTime } from '../auth.jsx';
+import { Download, Image as ImageIcon, FileImage } from 'lucide-react';
 import { STATUS_LABELS } from '../components/Layout.jsx';
 
 const STATUS_COLORS = {
@@ -261,9 +262,9 @@ export default function StaffAnalytics() {
           <p className="panel-sub">Pick a day, a month, a whole year or your own range — every figure on this page follows your choice.</p>
         </div>
         <div className="row" style={{ gap: 8, flexWrap: 'wrap' }}>
-          <button className={`btn btn--outline btn--sm ${busy ? 'btn--busy' : ''}`} disabled={!!busy} onClick={exportExcel}>⬇ Excel</button>
-          <button className={`btn btn--outline btn--sm ${busy ? 'btn--busy' : ''}`} disabled={!!busy} onClick={exportPNG}>{busy === 'image' ? 'Building…' : '🖼 PNG'}</button>
-          <button className={`btn btn--outline btn--sm ${busy ? 'btn--busy' : ''}`} disabled={!!busy} onClick={exportJPG}>{busy === 'image-jpg' ? 'Building…' : '🖼 JPG'}</button>
+          <button className={`btn btn--outline btn--sm ${busy ? 'btn--busy' : ''}`} disabled={!!busy} onClick={exportExcel}><Download size={14} style={{ verticalAlign: '-2px', marginRight: 5 }} />Excel</button>
+          <button className={`btn btn--outline btn--sm ${busy ? 'btn--busy' : ''}`} disabled={!!busy} onClick={exportPNG}>{busy === 'image' ? 'Building…' : <><ImageIcon size={14} style={{ verticalAlign: '-2px', marginRight: 5 }} />PNG</>}</button>
+          <button className={`btn btn--outline btn--sm ${busy ? 'btn--busy' : ''}`} disabled={!!busy} onClick={exportJPG}>{busy === 'image-jpg' ? 'Building…' : <><FileImage size={14} style={{ verticalAlign: '-2px', marginRight: 5 }} />JPG</>}</button>
         </div>
       </div>
 

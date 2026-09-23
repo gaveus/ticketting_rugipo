@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { api, apiUpload } from '../auth.jsx';
+import { ArrowRight, ArrowLeft, CheckCircle2, ClipboardList, GraduationCap } from 'lucide-react';
 
 const STEPS = ['Your details', 'What do you need help with?', 'The exact problem', 'Tell us more', 'Review', 'Done'];
 
@@ -206,7 +207,7 @@ export default function NewTicket() {
               </label>
               {recognized && recognized !== 'not-found' && (
                 <div className="notice notice--ok" style={{ gridColumn: '1 / -1' }}>
-                  <strong>Welcome back, {recognized.fullName.split(/\s+/)[0]}! 🎓</strong> — we remember your details from your last complaint.{' '}
+                  <strong>Welcome back, {recognized.fullName.split(/\s+/)[0]}! <GraduationCap size={15} style={{ verticalAlign: '-2px' }} /></strong> — we remember your details from your last complaint.{' '}
                   <button type="button" className="btn btn--outline btn--sm" style={{ marginLeft: 6 }} onClick={applyRecognized}>Use my saved details</button>
                 </div>
               )}
@@ -429,13 +430,13 @@ export default function NewTicket() {
         {/* ------------------------- Step 6 ------------------------- */}
         {step === 5 && result && (
           <>
-            <h2 className="section__title">✅ Complaint submitted</h2>
+            <h2 className="section__title"><CheckCircle2 size={20} style={{ verticalAlign: '-4px', marginRight: 7 }} />Complaint submitted</h2>
             <div className="nt-success">
               <small>Your Tracking ID — write it down and keep it safe</small>
               <div className="nt-success__id">{result.ticketNumber}</div>
               <button type="button" className="btn btn--outline btn--sm"
                 onClick={() => { try { navigator.clipboard.writeText(result.ticketNumber); } catch { /* clipboard blocked */ } }}>
-                📋 Copy ID
+                <ClipboardList size={14} style={{ verticalAlign: '-2px', marginRight: 4 }} />Copy ID
               </button>
               <p className="muted" style={{ margin: '10px 0 0' }}>
                 We've also sent a confirmation to <strong>{result.email}</strong>.
@@ -466,9 +467,9 @@ export default function NewTicket() {
         {/* ---------------------- nav buttons ---------------------- */}
         {step < 5 && (
           <div className="row mt" style={{ justifyContent: 'space-between' }}>
-            <button className="btn btn--outline" onClick={back} disabled={step === 0 || busy}>← Back</button>
+            <button className="btn btn--outline" onClick={back} disabled={step === 0 || busy}><ArrowLeft size={15} style={{ verticalAlign: '-2px', marginRight: 4 }} />Back</button>
             {step < 4
-              ? <button className="btn btn--navy" onClick={next}>Continue →</button>
+              ? <button className="btn btn--navy" onClick={next}>Continue <ArrowRight size={15} style={{ verticalAlign: '-2px', marginLeft: 4 }} /></button>
               : <button className="btn btn--primary" onClick={submit} disabled={busy}>{busy ? 'Submitting…' : 'Submit complaint'}</button>}
           </div>
         )}

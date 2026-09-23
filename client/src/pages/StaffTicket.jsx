@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react';
+import { ChevronDown, ArrowRight, X, CheckCircle2, ArrowUp, Check, CheckCheck, XCircle, FileText, Paperclip, Mail, Image as ImageIcon } from 'lucide-react';
 
 /** Plain-language meaning of each stage — shown on the action buttons. */
 const STATUS_EXPLAIN = {
@@ -22,7 +23,7 @@ function StageMenu({ allowed, busy, isEscalated, isSeniorPlus, onPick }) {
       <button type="button" className="btn btn--outline btn--sm" aria-haspopup="menu" aria-expanded={open}
         disabled={busy || (isEscalated && !isSeniorPlus)}
         onClick={() => setOpen((o) => !o)}>
-        Change stage ▾
+        Change stage <ChevronDown size={13} style={{ verticalAlign: '-2px', marginLeft: 3 }} />
       </button>
       {open && (
         <div className="menu-list" role="menu" onMouseLeave={() => setOpen(false)}>
@@ -30,7 +31,7 @@ function StageMenu({ allowed, busy, isEscalated, isSeniorPlus, onPick }) {
             <button key={s} role="menuitem" type="button"
               onClick={() => { setOpen(false); onPick(s); }}
               title={STATUS_EXPLAIN[s] || ''}>
-              → {STATUS_LABELS[s]}
+              <ArrowRight size={12} style={{ verticalAlign: '-1px', marginRight: 5 }} />{STATUS_LABELS[s]}
               {STATUS_EXPLAIN[s] && <small style={{ display: 'block', fontWeight: 400, color: 'var(--muted)', fontSize: '.74rem' }}>{STATUS_EXPLAIN[s]}</small>}
             </button>
           ))}
@@ -48,7 +49,7 @@ function EvidenceLightbox({ url, name, onClose }) {
       <div className="modal modal--evidence" onClick={(e) => e.stopPropagation()}>
         <div className="row row--between" style={{ marginBottom: 8 }}>
           <strong style={{ wordBreak: 'break-all' }}>{name}</strong>
-          <button type="button" className="btn btn--outline btn--sm" onClick={onClose}>Close ✕</button>
+          <button type="button" className="btn btn--outline btn--sm" onClick={onClose}><X size={13} style={{ verticalAlign: '-2px', marginRight: 3 }} />Close</button>
         </div>
         <img src={url} alt={name} style={{ maxWidth: '100%', maxHeight: '70vh', borderRadius: 10, border: '1px solid var(--line)' }} />
       </div>
@@ -121,12 +122,12 @@ export default function StaffTicket() {
   async function resolve() {
     if (!(actionNote.trim().length >= 5)) { setMsg('Add a short note about what was done (at least 5 characters) — it is emailed to the student.'); return; }
     await act(`/staff/tickets/${id}/status`, { status: 'resolved', note: actionNote.trim() },
-      '✅ Resolved — the student has been emailed automatically.');
+      'Resolved — the student has been emailed automatically.');
   }
   async function escalate() {
     if (actionNote.trim().length < 5) { setMsg('An escalation reason is required (at least 5 characters).'); return; }
     await act(`/staff/tickets/${id}/status`, { status: 'escalated', note: actionNote.trim() },
-      '⬆ Escalated — Senior Engineers have been notified by email.');
+      'Escalated — Senior Engineers have been notified by email.');
   }
 
   const staffMsgs = messages.filter((m) => ['staff', 'senior', 'admin'].includes(m.sender_role));
@@ -168,29 +169,29 @@ export default function StaffTicket() {
         </div>
         {isEscalated && !isSeniorPlus && (
           <p className="muted" style={{ margin: 0, flexBasis: '100%' }}>
-            ⬆ This complaint is with the Senior Engineers now — you can still reply to the student and add internal notes below; only a Senior Engineer can resolve it.
+            <ArrowUp size={13} style={{ verticalAlign: '-2px', marginRight: 4 }} />This complaint is with the Senior Engineers now — you can still reply to the student and add internal notes below; only a Senior Engineer can resolve it.
           </p>
         )}
         {canResolve && (
           <button className="btn btn--resolve" disabled={busy} onClick={() => { setPanel(panel === 'resolve' ? null : 'resolve'); setActionNote(''); }}>
-            ✓ Mark as solved
+            <CheckCircle2 size={16} style={{ verticalAlign: '-3px', marginRight: 5 }} />Mark as solved
             <small>Student gets an email straight away</small>
           </button>
         )}
         {canEscalate && (
           <button className="btn btn--escalate" disabled={busy} onClick={() => { setPanel(panel === 'escalate' ? null : 'escalate'); setActionNote(''); }}>
-            ⬆ Send to Senior Engineers
+            <ArrowUp size={16} style={{ verticalAlign: '-3px', marginRight: 5 }} />Send to Senior Engineers
             <small>For problems beyond first-line — they take it from here</small>
           </button>
         )}
         <StageMenu allowed={otherTransitions} busy={busy} isEscalated={isEscalated} isSeniorPlus={isSeniorPlus}
-          onPick={(s) => act(`/staff/tickets/${id}/status`, { status: s }, `Stage → ${STATUS_LABELS[s]}`)} />
+          onPick={(s) => act(`/staff/tickets/${id}/status`, { status: s }, `Stage changed to ${STATUS_LABELS[s]}`)} />
         {allowedTransitions.length === 0 && !isEscalated && <p className="muted" style={{ margin: 0 }}>This complaint is fully finished — nothing left to do.</p>}
       </div>
 
       {panel === 'resolve' && (
         <div className="card card--action mb">
-          <strong>✓ Mark as solved</strong>
+          <strong><CheckCheck size={15} style={{ verticalAlign: '-2px', marginRight: 5 }} />Mark as solved</strong>
           <p className="muted" style={{ fontSize: '.88rem', margin: '4px 0 8px' }}>
             The moment you confirm, an email goes to <strong>{student.email}</strong> automatically — you never type their address.
           </p>
@@ -206,7 +207,7 @@ export default function StaffTicket() {
       )}
       {panel === 'escalate' && (
         <div className="card card--action mb">
-          <strong>⬆ Send to Senior Engineers</strong>
+          <strong><ArrowUp size={15} style={{ verticalAlign: '-2px', marginRight: 5 }} />Send to Senior Engineers</strong>
           <p className="muted" style={{ fontSize: '.88rem', margin: '4px 0 8px' }}>
             Explains <em>why</em> — this note is emailed to every Senior Engineer and stored on the escalation record.
             {isSuper ? ' Super ICT Support sees every desk.' : ''}
@@ -262,11 +263,11 @@ export default function StaffTicket() {
                 <div className="row">
                   <button className="btn btn--sm" style={{ background: 'var(--green)', color: '#fff' }} disabled={busy}
                     onClick={() => act(`/staff/tickets/${id}/verify-payment`, { outcome: 'verified', note: 'Confirmed against payment records' }, 'Payment marked verified.')}>
-                    ✓ Verified in records
+                    <Check size={13} style={{ verticalAlign: '-2px', marginRight: 4 }} />Verified in records
                   </button>
                   <button className="btn btn--danger btn--sm" disabled={busy}
                     onClick={() => act(`/staff/tickets/${id}/verify-payment`, { outcome: 'failed_verification', note: 'No matching record found' }, 'Marked as failed verification.')}>
-                    ✗ No record found
+                    <XCircle size={13} style={{ verticalAlign: '-2px', marginRight: 4 }} />No record found
                   </button>
                 </div>
               )}
@@ -311,7 +312,7 @@ export default function StaffTicket() {
                         }}>
                         {isImage
                           ? <EvidenceThumb id={a.id} />
-                          : <span className="evidence-item__icon">{isPdf ? '📄' : '📎'}</span>}
+                          : <span className="evidence-item__icon">{isPdf ? <FileText size={16} /> : <Paperclip size={16} />}</span>}
                       </button>
                       <div className="evidence-item__meta">
                         <strong title={a.original_filename}>{a.original_filename}</strong>
@@ -376,7 +377,7 @@ export default function StaffTicket() {
             </label>
             <label style={{ display: 'flex', gap: 8, alignItems: 'center', margin: '6px 0 10px', fontSize: '.86rem' }}>
               <input type="checkbox" checked={emailReply} onChange={(e) => setEmailReply(e.target.checked)} style={{ width: 16, height: 16 }} />
-              <span>✉ Also email this reply to the student <small>(leave unticked — the tracking page is enough)</small></span>
+              <span><Mail size={14} style={{ verticalAlign: '-2px', marginRight: 5 }} />Also email this reply to the student <small>(leave unticked — the tracking page is enough)</small></span>
             </label>
             <button className={`btn btn--navy btn--sm ${busy ? 'btn--busy' : ''}`} disabled={busy || !reply.trim()}
               onClick={() => { act(`/staff/tickets/${id}/reply`, { message: reply, emailIt: emailReply }, emailReply ? 'Reply sent + emailed to the student.' : 'Reply sent to the tracking page.').then(() => setReply('')); }}>
@@ -537,6 +538,6 @@ function EvidenceThumb({ id }) {
       .catch(() => {});
     return () => { dead = true; };
   }, [id]);
-  if (!url) return <span className="evidence-item__icon">🖼</span>;
+  if (!url) return <span className="evidence-item__icon"><ImageIcon size={16} /></span>;
   return <img src={url} alt="" loading="lazy" />;
 }

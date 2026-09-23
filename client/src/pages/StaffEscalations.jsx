@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { api, useAuth, fmtDateTime } from '../auth.jsx';
+import { ArrowUp, Inbox } from 'lucide-react';
 
 /** Human "how long has this been waiting" label. */
 function waitingSince(iso) {
@@ -83,7 +84,7 @@ export default function StaffEscalations() {
           <div className="stat__hint">Login, registration, results, receipt/printing errors, CBT, admission.</div>
         </div>
         <div className="stat">
-          <div className="stat__n">⬆</div>
+          <div className="stat__n"><ArrowUp size={22} /></div>
           <div className="stat__label">Your focus</div>
           <div className="stat__hint">
             {myDesk ? `You handle ${myDesk} complaints — routing to your desk is automatic.` : 'All desks are visible to you, and every ticket is tagged with the desk handling it.'}
@@ -111,7 +112,7 @@ export default function StaffEscalations() {
 
       {rows && shown.length === 0 && (
         <div className="card empty-state">
-          <div style={{ fontSize: '2rem' }}>🗂</div>
+          <div style={{ fontSize: '2rem', color: 'var(--green)' }}><Inbox size={32} /></div>
           <strong>Nothing waiting here</strong>
           <p className="muted" style={{ margin: '4px 0 0' }}>
             {desk === 'all'

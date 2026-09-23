@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { api, downloadAttachment, fmtDateTime } from '../auth.jsx';
+import { Check, Paperclip } from 'lucide-react';
 import { STATUS_LABELS } from './Layout.jsx';
 
 /** The journey every complaint walks — the student's progress bar follows it. */
@@ -89,7 +90,7 @@ export default function TicketView({ ticketId, email }) {
           <div className="stage-rail mt">
             {STAGES.map((s, i) => (
               <div key={s.key} className={`stage-rail__step ${i < active ? 'is-done' : ''} ${i === active ? 'is-active' : ''}`}>
-                <span className="stage-rail__dot">{i < active ? '✓' : i + 1}</span>
+                <span className="stage-rail__dot">{i < active ? <Check size={13} /> : i + 1}</span>
                 <strong>{s.label}</strong>
               </div>
             ))}
@@ -127,7 +128,7 @@ export default function TicketView({ ticketId, email }) {
           <div className="row mt" style={{ flexWrap: 'wrap' }}>
             {attachments.map((a) => (
               <button key={a.id} className="btn btn--outline btn--sm" onClick={() => downloadAttachment(a.id, email)}>
-                📎 {a.original_filename}
+                <Paperclip size={14} style={{ verticalAlign: '-2px', marginRight: 5 }} />{a.original_filename}
               </button>
             ))}
           </div>

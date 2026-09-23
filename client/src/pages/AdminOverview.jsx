@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
+import { Ticket, Hourglass, MessageCircle, ArrowUp, CheckCircle2, BarChart3, ShieldCheck, ArrowRight, TrendingUp, TrendingDown, Sprout, Inbox } from 'lucide-react';
 import {
   ResponsiveContainer, LineChart, Line, XAxis, YAxis, Tooltip, Legend,
   PieChart, Pie, Cell,
@@ -28,7 +29,7 @@ function TrendPill({ value, invert }) {
   const cls = flat ? 'trend-pill--flat' : good ? 'trend-pill--good' : 'trend-pill--warn';
   return (
     <span className={`trend-pill ${cls}`} title="Measured against the previous period of the same length">
-      {flat ? '–' : up ? '▲' : '▼'} {Math.abs(value)}%
+      {flat ? '–' : up ? <TrendingUp size={11} style={{ verticalAlign: '-1px' }} /> : <TrendingDown size={11} style={{ verticalAlign: '-1px' }} />} {Math.abs(value)}%
     </span>
   );
 }
@@ -72,18 +73,18 @@ export default function AdminOverview() {
   const t = data?.trends || {};
 
   const cards = [
-    { n: c?.open, label: 'Open', icon: '🎫', to: '/admin/tickets?status=open', tone: 'ov-card--open', hint: 'waiting for the first look', trend: t.created, invert: true },
-    { n: c?.inProgress, label: 'In Progress', icon: '⏳', to: '/admin/tickets?status=in_progress', tone: 'ov-card--progress', hint: 'officers are on these now' },
-    { n: c?.waiting, label: 'Waiting for Student', icon: '💬', to: '/admin/tickets?status=waiting_student', tone: 'ov-card--waiting', hint: 'we asked, they have not answered' },
-    { n: c?.escalated, label: 'Escalated', icon: '⬆', to: isSuper ? '/admin/tickets?status=escalated' : '/admin/escalations', tone: 'ov-card--escalated', hint: 'with the Senior Engineers', trend: t.escalated, invert: true },
-    { n: c?.resolvedToday, label: 'Resolved Today', icon: '✅', to: '/admin/tickets?status=resolved', tone: 'ov-card--resolved', hint: 'every student has been told' },
+    { n: c?.open, label: 'Open', icon: Ticket, to: '/admin/tickets?status=open', tone: 'ov-card--open', hint: 'waiting for the first look', trend: t.created, invert: true },
+    { n: c?.inProgress, label: 'In Progress', icon: Hourglass, to: '/admin/tickets?status=in_progress', tone: 'ov-card--progress', hint: 'officers are on these now' },
+    { n: c?.waiting, label: 'Waiting for Student', icon: MessageCircle, to: '/admin/tickets?status=waiting_student', tone: 'ov-card--waiting', hint: 'we asked, they have not answered' },
+    { n: c?.escalated, label: 'Escalated', icon: ArrowUp, to: isSuper ? '/admin/tickets?status=escalated' : '/admin/escalations', tone: 'ov-card--escalated', hint: 'with the Senior Engineers', trend: t.escalated, invert: true },
+    { n: c?.resolvedToday, label: 'Resolved Today', icon: CheckCircle2, to: '/admin/tickets?status=resolved', tone: 'ov-card--resolved', hint: 'every student has been told' },
   ];
 
   const quickActions = [
-    ['🎫', 'View All Complaints', 'Every complaint, every stage', '/admin/tickets'],
-    ['⬆', isSuper ? 'With Senior Engineers' : 'My Escalations', 'Complaints the seniors are handling', isSuper ? '/admin/tickets?status=escalated' : '/admin/escalations'],
-    ['💬', 'Student Questions', 'Live chats waiting for a reply', '/admin/inbox'],
-    ['📊', 'Reports', 'Figures for any day, month or year', '/admin/analytics'],
+    [Ticket, 'View All Complaints', 'Every complaint, every stage', '/admin/tickets'],
+    [ArrowUp, isSuper ? 'With Senior Engineers' : 'My Escalations', 'Complaints the seniors are handling', isSuper ? '/admin/tickets?status=escalated' : '/admin/escalations'],
+    [MessageCircle, 'Student Questions', 'Live chats waiting for a reply', '/admin/inbox'],
+    [BarChart3, 'Reports', 'Figures for any day, month or year', '/admin/analytics'],
   ];
 
   const activeLabel = RANGES.find((r) => r.key === range)?.label || 'Last 7 days';
@@ -98,7 +99,7 @@ export default function AdminOverview() {
             <h2>{user?.fullName}</h2>
             <p>Here is your ICT Support desk at a glance — every figure below is live from the system, refreshed as students and officers act.</p>
           </div>
-          <span className="ov-banner__role">🛡 {roleLabel}{user?.staffNo ? ` · ${user.staffNo}` : ''}</span>
+          <span className="ov-banner__role"><ShieldCheck size={14} style={{ verticalAlign: '-2px', marginRight: 4 }} />{roleLabel}{user?.staffNo ? ` · ${user.staffNo}` : ''}</span>
         </div>
         <em className="ov-banner__motto">Service · Support · Solutions</em>
       </div>
@@ -112,7 +113,7 @@ export default function AdminOverview() {
           <div className="ov-cards mb">
             {cards.map((card) => (
               <button key={card.label} type="button" className={`ov-card ${card.tone}`} onClick={() => navigate(card.to)}>
-                <span className="ov-card__ic">{card.icon}</span>
+                <span className="ov-card__ic"><card.icon size={20} strokeWidth={2} /></span>
                 <span className="ov-card__label">{card.label}</span>
                 <span className="ov-card__n">{card.n ?? '–'}</span>
                 <span className="ov-card__hint">{card.hint}</span>
@@ -130,7 +131,7 @@ export default function AdminOverview() {
                     Actual complaint figures for {data?.period?.label || activeLabel}, shown side by side with the previous period.
                   </p>
                 </div>
-                <Link className="btn btn--outline btn--sm" to="/admin/analytics">Full reports →</Link>
+                <Link className="btn btn--outline btn--sm" to="/admin/analytics">Full reports <ArrowRight size={13} style={{ verticalAlign: '-2px' }} /></Link>
               </div>
 
               {/* range selector — any day, month or year */}
@@ -155,7 +156,7 @@ export default function AdminOverview() {
 
               {data && data.days.length === 0 && (
                 <div className="empty-state" style={{ padding: '30px 10px' }}>
-                  <div style={{ fontSize: '1.8rem' }}>🌱</div>
+                  <div style={{ fontSize: '1.8rem', color: 'var(--green)' }}><Sprout size={30} /></div>
                   <strong>No complaints in this period</strong>
                   <p className="muted" style={{ margin: '4px 0 0', fontSize: '.84rem' }}>Pick a wider period above, or wait for the next one to arrive.</p>
                 </div>
@@ -249,7 +250,7 @@ export default function AdminOverview() {
             )}
             {data && data.recent.length === 0 && (
               <div className="empty-state">
-                <div style={{ fontSize: '2rem' }}>📮</div>
+                <div style={{ fontSize: '2rem', color: 'var(--green)' }}><Inbox size={32} /></div>
                 <strong>All quiet — nothing new right now</strong>
                 <p className="muted" style={{ margin: '4px 0 10px' }}>When a student brings a complaint, it lands here first.</p>
               </div>
@@ -283,11 +284,11 @@ export default function AdminOverview() {
         <div className="ov-rail">
           <div className="card ov-quick">
             <h3 className="panel-title" style={{ margin: 0 }}>Quick actions</h3>
-            {quickActions.map(([ic, label, hint, to]) => (
+            {quickActions.map(([Ic, label, hint, to]) => (
               <Link key={label} to={to} className="ov-quick__item">
-                <span className="ov-quick__ic">{ic}</span>
+                <span className="ov-quick__ic"><Ic size={18} strokeWidth={2} /></span>
                 <span><strong>{label}</strong><small>{hint}</small></span>
-                <span className="ov-quick__arrow">›</span>
+                <span className="ov-quick__arrow"><ArrowRight size={14} /></span>
               </Link>
             ))}
           </div>

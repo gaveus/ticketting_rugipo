@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import { api, useAuth, fmtDateTime } from '../auth.jsx';
+import { Check, Inbox } from 'lucide-react';
 import { STATUS_LABELS } from '../components/Layout.jsx';
 
 const STATUS_OPTIONS = ['', 'open', 'assigned', 'in_progress', 'waiting_student', 'escalated', 'resolved', 'closed', 'rejected'];
@@ -89,7 +90,7 @@ export default function AdminTickets({ mine = false }) {
         </div>
         <button type="button" className={`btn btn--sm ${filters.unattended ? 'btn--gold' : 'btn--outline'}`}
           onClick={() => set('unattended', filters.unattended ? '' : '1')}>
-          {filters.unattended ? '✓ Showing unattended' : 'Show unattended only'}
+          {filters.unattended ? <><Check size={14} style={{ verticalAlign: '-2px', marginRight: 4 }} />Showing unattended</> : 'Show unattended only'}
         </button>
       </div>
 
@@ -146,7 +147,7 @@ export default function AdminTickets({ mine = false }) {
       )}
       {list && list.length === 0 && (
         <div className="card empty-state">
-          <div style={{ fontSize: '2rem' }}>📭</div>
+          <div style={{ fontSize: '2rem', color: 'var(--green)' }}><Inbox size={32} /></div>
           <strong>No complaints match</strong>
           <p className="muted" style={{ margin: '4px 0 0' }}>Nothing matches the filters you set.</p>
         </div>

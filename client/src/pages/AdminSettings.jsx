@@ -1,13 +1,14 @@
 import React, { useEffect, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { useAuth } from '../auth.jsx';
+import { User, ClipboardList, School, Megaphone, Star, ChevronDown, Reply, ArrowUp, ArrowUpDown, KeyRound, Ban, Check, ArrowLeftRight, Undo2 } from 'lucide-react';
 import { api } from '../auth.jsx';
 
 const TABS = [
-  ['accounts', '👤 Staff accounts'],
-  ['catalogue', '🧾 Support services'],
-  ['masterdata', '🏫 Faculties & departments'],
-  ['updates', '📣 Homepage updates'],
+  ['accounts', 'Staff accounts', User],
+  ['catalogue', 'Support services', ClipboardList],
+  ['masterdata', 'Faculties & departments', School],
+  ['updates', 'Homepage updates', Megaphone],
 ];
 
 /** Super ICT Support administration: accounts, services, master data. */
@@ -29,10 +30,10 @@ export default function AdminSettings() {
           You are viewing this in read-only mode — only Super ICT Support can make changes here.
         </div>
         <div className="chips mb" style={{ flexDirection: 'row', display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-          {TABS.map(([k, label]) => (
+          {TABS.map(([k, label, Ic]) => (
             <button key={k} type="button" className="chip"
               style={{ width: 'auto', display: 'inline-flex', padding: '8px 14px', borderColor: tab === k ? 'var(--green)' : 'var(--line)', background: tab === k ? 'var(--gold-soft)' : '#fff' }}
-              onClick={() => setParams({ tab: k }, { replace: true })}><strong>{label}</strong></button>
+              onClick={() => setParams({ tab: k }, { replace: true })}>{Ic && <Ic size={13} style={{ verticalAlign: '-2px', marginRight: 5 }} />}<strong>{label}</strong></button>
           ))}
         </div>
         {tab === 'accounts' && <Accounts readOnly />}
@@ -49,10 +50,10 @@ export default function AdminSettings() {
       <p className="section__sub">Manage staff accounts, the support services students pick from, and the faculty/department lists.</p>
 
       <div className="chips mb" style={{ flexDirection: 'row', display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-        {TABS.map(([k, label]) => (
+        {TABS.map(([k, label, Ic]) => (
           <button key={k} type="button" className="chip"
             style={{ width: 'auto', display: 'inline-flex', padding: '8px 14px', borderColor: tab === k ? 'var(--green)' : 'var(--line)', background: tab === k ? 'var(--gold-soft)' : '#fff' }}
-            onClick={() => setParams({ tab: k }, { replace: true })}><strong>{label}</strong></button>
+            onClick={() => setParams({ tab: k }, { replace: true })}>{Ic && <Ic size={13} style={{ verticalAlign: '-2px', marginRight: 5 }} />}<strong>{label}</strong></button>
         ))}
       </div>
 
@@ -230,7 +231,7 @@ function Accounts({ readOnly = false } = {}) {
               <tbody>
                 {staffList.map((s) => (
                   <tr key={s.id} style={!s.active ? { opacity: .55 } : undefined}>
-                    <td><strong>{s.full_name}</strong>{s.role === 'admin' && s.id !== user.id ? ' ⭐' : ''}<br />
+                    <td><strong>{s.full_name}</strong>{s.role === 'admin' && s.id !== user.id ? <Star size={12} style={{ verticalAlign: '-1px', marginLeft: 4, color: '#d97706' }} aria-label="Super ICT" /> : ''}<br />
                       <span className="muted" style={{ fontSize: '.78rem' }}>{s.email}{s.staff_no ? ` · ${s.staff_no}` : ''}</span></td>
                     <td><span className={`badge ${s.role === 'admin' ? 'badge--resolved' : s.role === 'senior' ? 'badge--in_progress' : 'badge--assigned'}`}>
                       {roleBadge(s.role)}</span>{s.role === 'senior' && s.specialty && (
@@ -249,31 +250,33 @@ function Accounts({ readOnly = false } = {}) {
                           <button type="button" className="btn btn--outline btn--sm"
                             aria-haspopup="menu" aria-expanded={menuOpen === s.id}
                             onClick={() => setMenuOpen(menuOpen === s.id ? null : s.id)}>
-                            Actions ▾
+                            Actions <ChevronDown size={13} style={{ verticalAlign: '-2px', marginLeft: 3 }} />
                           </button>
                           {menuOpen === s.id && (
                             <div className="menu-list" role="menu" onMouseLeave={() => setMenuOpen(null)}>
                               <button role="menuitem" type="button"
                                 onClick={() => { setMenuOpen(null); setConfirmRole({ staff: s, role: s.role === 'senior' ? 'staff' : 'senior', specialty: s.specialty || 'portal' }); }}>
-                                {s.role === 'senior' ? '↩ Return to ICT Support' : '⬆ Make Senior Engineer'}
+                                {s.role === 'senior'
+                                  ? <><Reply size={13} style={{ verticalAlign: '-2px', marginRight: 5 }} />Return to ICT Support</>
+                                  : <><ArrowUp size={13} style={{ verticalAlign: '-2px', marginRight: 5 }} />Make Senior Engineer</>}
                               </button>
                               {s.role === 'senior' && (
                                 <button role="menuitem" type="button"
                                   onClick={() => { setMenuOpen(null); act(`/staff/admin/staff/${s.id}/specialty`, { specialty: s.specialty === 'payment' ? 'portal' : 'payment' }); }}>
-                                  ⇄ Move to {s.specialty === 'payment' ? 'portal' : 'payment'} desk
+                                  <ArrowLeftRight size={13} style={{ verticalAlign: '-2px', marginRight: 5 }} />Move to {s.specialty === 'payment' ? 'portal' : 'payment'} desk
                                 </button>
                               )}
                               <button role="menuitem" type="button"
                                 onClick={() => { setMenuOpen(null); setConfirmSuper({ id: s.id, email: s.email, input: '' }); }}>
-                                ⭐ Grant Super ICT Support
+                                <Star size={13} style={{ verticalAlign: '-2px', marginRight: 5 }} />Grant Super ICT Support
                               </button>
                               <button role="menuitem" type="button"
                                 onClick={() => { setMenuOpen(null); setResetPw({ staff: s, password: '' }); }}>
-                                🔑 Reset their password
+                                <KeyRound size={13} style={{ verticalAlign: '-2px', marginRight: 5 }} />Reset their password
                               </button>
                               <button role="menuitem" type="button" className="menu-list__danger"
                                 onClick={() => { setMenuOpen(null); act(`/staff/admin/staff/${s.id}/active`, { active: !s.active }); }}>
-                                {s.active ? '⛔ Disable this account' : '✓ Enable this account'}
+                                {s.active ? <><Ban size={13} style={{ verticalAlign: '-2px', marginRight: 5 }} />Disable this account</> : <><Check size={13} style={{ verticalAlign: '-2px', marginRight: 5 }} />Enable this account</>}
                               </button>
                             </div>
                           )}
@@ -286,7 +289,7 @@ function Accounts({ readOnly = false } = {}) {
             </table>
           </div>
           <p className="muted" style={{ fontSize: '.8rem' }}>
-            ⭐ Super ICT Support can sign in, assign any ticket, create accounts and promote others.
+            <Star size={12} style={{ verticalAlign: '-2px', marginRight: 4, color: '#d97706' }} />Super ICT Support can sign in, assign any ticket, create accounts and promote others.
           </p>
         </div>
 
@@ -342,7 +345,7 @@ function Accounts({ readOnly = false } = {}) {
 
       {confirmRole && (
         <div className="card mt" style={{ borderLeft: '4px solid var(--green)' }}>
-          <strong>{confirmRole.role === 'senior' ? '⬆ Make Senior Engineer' : '↩ Return to ICT Support'}</strong>
+          <strong style={{ display: 'flex', alignItems: 'center', gap: 6 }}>{confirmRole.role === 'senior' ? <><ArrowUp size={16} /> Make Senior Engineer</> : <><Undo2 size={16} /> Return to ICT Support</>}</strong>
           <p className="muted" style={{ fontSize: '.88rem' }}>
             {confirmRole.role === 'senior'
               ? `${confirmRole.staff.full_name} will work escalated complaints. Choose the desk — escalations are routed by it.`
@@ -374,7 +377,7 @@ function Accounts({ readOnly = false } = {}) {
 
       {resetPw && (
         <div className="card mt" style={{ borderLeft: '4px solid var(--gold)' }}>
-          <strong>🔑 Reset password for {resetPw.staff.full_name}</strong>
+          <strong style={{ display: 'flex', alignItems: 'center', gap: 6 }}><KeyRound size={16} /> Reset password for {resetPw.staff.full_name}</strong>
           <p className="muted" style={{ fontSize: '.88rem' }}>
             Choose a new password for <strong>{resetPw.staff.email}</strong>. Share it privately —
             they can change it from My Profile after signing in.
@@ -398,7 +401,7 @@ function Accounts({ readOnly = false } = {}) {
 
       {confirmSuper && (
         <div className="card mt" style={{ borderLeft: '4px solid var(--gold)' }}>
-          <strong>⭐ Grant Super ICT Support</strong>
+          <strong style={{ display: 'flex', alignItems: 'center', gap: 6 }}><Star size={16} /> Grant Super ICT Support</strong>
           <p className="muted" style={{ fontSize: '.88rem' }}>
             This gives <strong>{confirmSuper.email}</strong> full powers: assigning any ticket, creating accounts,
             and promoting others. Type their email to confirm.

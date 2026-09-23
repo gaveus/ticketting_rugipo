@@ -1,6 +1,14 @@
 import React, { useEffect, useState } from 'react';
 import { Link, Outlet, useLocation, useNavigate } from 'react-router-dom';
+import { createClient } from '@supabase/supabase-js';
 import { useAuth, api, fmtDateTime } from '../auth.jsx';
+import { LayoutDashboard, Ticket, Mail, MessageCircle, ArrowUp, ArrowRight, ArrowLeft, TrendingUp, User, ShieldCheck, School, ClipboardList, Megaphone, Settings, Inbox } from 'lucide-react';
+
+// Supabase Realtime — when configured (production), new student questions
+// refresh the sidebar/bell badges instantly. Otherwise the 45s poll covers it.
+const SUPA_URL = import.meta.env.VITE_SUPABASE_URL || '';
+const SUPA_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY || '';
+const supaBadges = SUPA_URL && SUPA_KEY ? createClient(SUPA_URL, SUPA_KEY, { auth: { persistSession: false } }) : null;
 
 const Caret = () => (
   <svg className="caret" width="10" height="10" viewBox="0 0 10 10" aria-hidden="true">
@@ -8,7 +16,7 @@ const Caret = () => (
   </svg>
 );
 
-const KIND_ICONS = { new_ticket: '🎫', student_reply: '💬', escalation: '⬆', inbox: '✉' };
+const KIND_ICONS = { new_ticket: Ticket, student_reply: MessageCircle, escalation: ArrowUp, inbox: Mail };
 
 /**
  * Notification bell — a real dropdown feed of the newest things that need an
@@ -70,7 +78,7 @@ function NotificationBell({ badges }) {
           <div className="bell-panel__list">
             {items.length === 0 && (
               <div className="bell-panel__empty">
-                <span>🌿</span>
+                <Inbox size={22} />
                 <strong>All caught up</strong>
                 <p>When students write, reply or a complaint is escalated, you'll see it here.</p>
               </div>
@@ -78,7 +86,7 @@ function NotificationBell({ badges }) {
             {items.map((n) => (
               <Link key={n.id} to={n.to} className={`bell-panel__item ${new Date(n.at).getTime() > seenAt ? 'is-new' : ''}`}
                 onClick={() => setOpen(false)}>
-                <span className="bell-panel__ic">{KIND_ICONS[n.kind] || '•'}</span>
+                <span className="bell-panel__ic">{(() => { const Ic = KIND_ICONS[n.kind]; return Ic ? <Ic size={14} /> : '•'; })()}</span>
                 <span className="bell-panel__body">
                   <strong>{n.title}</strong>
                   <small>{n.detail}</small>
@@ -88,7 +96,7 @@ function NotificationBell({ badges }) {
             ))}
           </div>
           <Link to="/admin/inbox" className="bell-panel__foot" onClick={() => setOpen(false)}>
-            Open student questions →
+            Open student questions <ArrowRight size={13} style={{ verticalAlign: '-2px' }} />
           </Link>
         </div>
       )}
@@ -122,14 +130,20 @@ export default function AdminLayout() {
 
   useEffect(() => { setDrawer(false); }, [location.pathname, location.search]);
 
-  // Live count pills for the sidebar + bell. Quiet refresh every 45s.
+  // Live count pills for the sidebar + bell. Quiet refresh every 45s, instant
+  // nudge from Supabase when a new student question arrives (production).
   useEffect(() => {
     if (!user || !['staff', 'senior', 'admin'].includes(user.role)) return;
     let alive = true;
     function pull() { api('/staff/badges').then((b) => { if (alive) setBadges(b); }).catch(() => {}); }
     pull();
     const t = setInterval(pull, 45000);
-    return () => { alive = false; clearInterval(t); };
+    let channel = null;
+    if (supaBadges) {
+      channel = supaBadges.channel('inbox:badges');
+      channel.on('broadcast', { event: 'refresh' }, () => pull()).subscribe();
+    }
+    return () => { alive = false; clearInterval(t); if (channel && supaBadges) { try { supaBadges.removeChannel(channel); } catch { /* ignore */ } } };
   }, [user, location.pathname]);
 
   const isSenior = ['senior', 'admin'].includes(user?.role);
@@ -138,35 +152,35 @@ export default function AdminLayout() {
   const groups = React.useMemo(() => [
     {
       key: 'main', label: 'Main', collapsible: false,
-      items: [{ to: '/admin/dashboard', search: '', label: 'Overview', icon: '▦', end: true }],
+      items: [{ to: '/admin/dashboard', search: '', label: 'Overview', icon: LayoutDashboard, end: true }],
     },
     {
       key: 'complaints', label: 'Complaints', collapsible: true,
       items: [
-        { to: '/admin/tickets', search: '', label: 'All complaints', icon: '🎫', count: badges?.open },
-        { to: '/admin/inbox', search: '', label: 'Student questions', icon: '✉', count: badges?.unread },
-        ...(isSenior ? [{ to: '/admin/escalations', search: '', label: 'With Senior Engineers', icon: '⬆', count: badges?.escalated }] : []),
+        { to: '/admin/tickets', search: '', label: 'All complaints', icon: Ticket, count: badges?.open },
+        { to: '/admin/inbox', search: '', label: 'Student questions', icon: Mail, count: badges?.unread },
+        ...(isSenior ? [{ to: '/admin/escalations', search: '', label: 'With Senior Engineers', icon: ArrowUp, count: badges?.escalated }] : []),
       ],
     },
     {
       key: 'insights', label: 'Insights', collapsible: false,
-      items: [{ to: '/admin/analytics', search: '', label: 'Reports', icon: '📈' }],
+      items: [{ to: '/admin/analytics', search: '', label: 'Reports', icon: TrendingUp }],
     },
     ...(isSenior ? [{
       key: 'administration', label: 'Administration', collapsible: true,
       items: [
-        { to: '/admin/settings', search: '?tab=accounts', label: 'Staff accounts', icon: '👤' },
-        { to: '/admin/audit', search: '', label: 'Activity log', icon: '🛡' },
-        { to: '/admin/settings', search: '?tab=masterdata', label: 'Faculties & departments', icon: '🏫' },
-        { to: '/admin/settings', search: '?tab=catalogue', label: 'Support services', icon: '🧾' },
-        { to: '/admin/settings', search: '?tab=updates', label: 'Homepage updates', icon: '📣' },
+        { to: '/admin/settings', search: '?tab=accounts', label: 'Staff accounts', icon: User },
+        { to: '/admin/audit', search: '', label: 'Activity log', icon: ShieldCheck },
+        { to: '/admin/settings', search: '?tab=masterdata', label: 'Faculties & departments', icon: School },
+        { to: '/admin/settings', search: '?tab=catalogue', label: 'Support services', icon: ClipboardList },
+        { to: '/admin/settings', search: '?tab=updates', label: 'Homepage updates', icon: Megaphone },
       ],
     }] : []),
     {
       key: 'settings', label: 'Settings', collapsible: false,
       items: [{
         to: isAdmin ? '/admin/settings' : '/admin/profile', search: isAdmin ? '?tab=accounts' : '',
-        label: 'Settings', icon: '⚙', end: !isAdmin,
+        label: 'Settings', icon: Settings, end: !isAdmin,
       }],
     },
   ], [isSenior, isAdmin, badges]);
@@ -247,7 +261,7 @@ export default function AdminLayout() {
                 {g.items.map((it) => (
                   <Link key={it.label + it.search} to={it.to + it.search}
                     className={`admin-sidebar__link ${isActive(it) ? 'is-active' : ''}`}>
-                    <span className="admin-sidebar__icon" aria-hidden="true">{it.icon}</span>
+                    <span className="admin-sidebar__icon" aria-hidden="true"><it.icon size={16} strokeWidth={2} /></span>
                     {it.label}
                     {Number.isInteger(it.count) && it.count > 0 && <span className="admin-badge" aria-label={`${it.count}`}>{it.count > 99 ? '99+' : it.count}</span>}
                   </Link>
@@ -258,8 +272,8 @@ export default function AdminLayout() {
         </nav>
 
         <div className="admin-sidebar__foot">
-          <Link to="/admin/profile" className={`admin-sidebar__link ${location.pathname === '/admin/profile' ? 'is-active' : ''}`}>👤 My profile</Link>
-          <Link to="/" className="admin-sidebar__link">← Back to student site</Link>
+          <Link to="/admin/profile" className={`admin-sidebar__link ${location.pathname === '/admin/profile' ? 'is-active' : ''}`}><User size={15} style={{ verticalAlign: '-2px', marginRight: 6 }} />My profile</Link>
+          <Link to="/" className="admin-sidebar__link"><ArrowLeft size={15} style={{ verticalAlign: '-2px', marginRight: 6 }} />Back to student site</Link>
           <button className="admin-sidebar__link admin-sidebar__signout" onClick={() => { signOut(); nav('/admin'); }}>
             Sign out
           </button>
@@ -315,17 +329,17 @@ export default function AdminLayout() {
         {/* Mobile bottom nav — the five things staff do most. */}
         <nav className="admin-bottomnav" aria-label="Quick menu">
           <Link to="/admin/dashboard" className={location.pathname === '/admin/dashboard' ? 'is-active' : ''}>
-            <span className="bn-ic">▦</span>Home</Link>
+            <span className="bn-ic"><LayoutDashboard size={16} /></span>Home</Link>
           <Link to="/admin/tickets" className={location.pathname.startsWith('/admin/tickets') && !location.pathname.includes('my-tickets') ? 'is-active' : ''}>
-            <span className="bn-ic">🎫</span>Complaints</Link>
+            <span className="bn-ic"><Ticket size={16} /></span>Complaints</Link>
           <Link to="/admin/inbox" className={location.pathname === '/admin/inbox' ? 'is-active' : ''}>
-            <span className="bn-ic">✉</span>Questions</Link>
+            <span className="bn-ic"><Mail size={16} /></span>Questions</Link>
           {isSenior && (
             <Link to="/admin/escalations" className={location.pathname === '/admin/escalations' ? 'is-active' : ''}>
-              <span className="bn-ic">⬆</span>Escalated</Link>
+              <span className="bn-ic"><ArrowUp size={16} /></span>Escalated</Link>
           )}
           <Link to="/admin/profile" className={location.pathname === '/admin/profile' ? 'is-active' : ''}>
-            <span className="bn-ic">⚙</span>Settings</Link>
+            <span className="bn-ic"><Settings size={16} /></span>Settings</Link>
         </nav>
       </div>
     </div>

@@ -1,6 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { api, fmtDateTime } from '../auth.jsx';
 import { useLiveChat } from '../hooks/useLiveChat';
+import { Search, Inbox, Eye, Mail } from 'lucide-react';
 
 /**
  * Inbox — questions students sent through the "Talk to ICT" page.
@@ -51,7 +52,7 @@ export default function AdminInbox() {
         </div>
         <div className="inbox-toolbar">
           <div className="inbox-search">
-            <span aria-hidden="true">🔍</span>
+            <span aria-hidden="true"><Search size={15} /></span>
             <input
               value={query}
               onChange={(e) => { setQuery(e.target.value); setVisibleCount(12); }}
@@ -81,7 +82,7 @@ export default function AdminInbox() {
 
       {list && shown.length === 0 && (
         <div className="card empty-state">
-          <div style={{ fontSize: '2rem' }}>📭</div>
+          <div style={{ fontSize: '2rem' }}><Inbox size={28} /></div>
           <strong>{query || statusFilter !== 'all' ? 'No conversations match' : 'Nothing waiting'}</strong>
           <p className="muted" style={{ margin: '4px 0 0' }}>
             {query || statusFilter !== 'all'
@@ -114,7 +115,7 @@ export default function AdminInbox() {
                   {waiting && <span className="badge badge--waiting">Needs reply</span>}
                   {m.closed_at && <span className="badge badge--closed">Closed</span>}
                   {m.student_opened_at && !m.closed_at && (
-                    <small title="The student has this conversation open on their side">👁 opened chat</small>
+                    <small title="The student has this conversation open on their side"><Eye size={12} style={{ verticalAlign: '-1px', marginRight: 3 }} />opened chat</small>
                   )}
                   <small>{fmtDateTime(m.last_msg_at || m.created_at)}</small>
                 </span>
@@ -174,7 +175,7 @@ function LiveThread({ id, fallbackMeta, onClosed }) {
     try {
       await api(`/staff/inbox/${id}/reply`, { method: 'POST', body: JSON.stringify({ reply: t.body }) });
       setErr('');
-      setNote(`✉ A copy of "${t.body.slice(0, 48)}${t.body.length > 48 ? '…' : ''}" was emailed to ${fallbackMeta.email}.`);
+      setNote(`A copy of "${t.body.slice(0, 48)}${t.body.length > 48 ? '…' : ''}" was emailed to ${fallbackMeta.email}.`);
       setTimeout(() => setNote(''), 6000);
     } catch (e) { setErr(e.message); }
     finally { setBusy(false); }
@@ -191,8 +192,8 @@ function LiveThread({ id, fallbackMeta, onClosed }) {
         <strong>{thread?.subject || fallbackMeta.subject}</strong>
         <span>{fallbackMeta.sender_name} · {fallbackMeta.email}{fallbackMeta.matric_no ? ` · ${fallbackMeta.matric_no}` : ''}{fallbackMeta.phone ? ` · ${fallbackMeta.phone}` : ''}</span>
         <small className="inbox-thread__presence">
-          {live ? '🟢 Live — updates appear instantly' : '🟡 Reconnecting… (still working via updates)'}
-          {thread?.studentLastOpenedAt ? ` · 👁 student opened the chat ${fmtDateTime(thread.studentLastOpenedAt)}` : ''}
+          {live ? <><span style={{ display: 'inline-block', width: 8, height: 8, borderRadius: 99, background: 'var(--green, #16a34a)', marginRight: 5 }} />Live — updates appear instantly</> : <><span style={{ display: 'inline-block', width: 8, height: 8, borderRadius: 99, background: '#d97706', marginRight: 5 }} />Reconnecting… (still working via updates)</>}
+          {thread?.studentLastOpenedAt ? ` · student opened the chat ${fmtDateTime(thread.studentLastOpenedAt)}` : ''}
         </small>
       </div>
 
@@ -238,7 +239,7 @@ function LiveThread({ id, fallbackMeta, onClosed }) {
           {busy ? ' ' : 'Send'}
         </button>
         <button className="btn btn--outline btn--sm" disabled={busy} onClick={emailReply} title="Email the latest reply to the student">
-          ✉ Email it
+          <Mail size={14} style={{ verticalAlign: '-2px', marginRight: 4 }} />Email it
         </button>
         <button className="btn btn--outline btn--sm menu-list__danger" disabled={busy} onClick={() => setConfirmClose(true)}>
           Close conversation

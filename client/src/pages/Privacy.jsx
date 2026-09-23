@@ -1,5 +1,6 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
+import { Phone } from 'lucide-react';
 
 /**
  * Privacy / data-protection notice (NDPR-aligned).
@@ -60,7 +61,7 @@ export default function Privacy() {
 
       <div className="notice notice--info">
         <strong>Questions about your data?</strong> Email{' '}
-        <a href="mailto:ecampus@rugipo.edu.ng">ecampus@rugipo.edu.ng</a> or call ☎ +234803******* —
+        <a href="mailto:ecampus@rugipo.edu.ng">ecampus@rugipo.edu.ng</a> or call <Phone size={13} style={{ verticalAlign: '-2px', margin: '0 3px' }} />+234803******* —
         Rufus Giwa Polytechnic, Owo ICT Directorate.
       </div>
 

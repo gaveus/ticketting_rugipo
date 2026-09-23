@@ -1,6 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { api } from '../auth.jsx';
+import { Zap, ShieldCheck, Users, ArrowRight, Search, MessageCircle, LifeBuoy, Clock, Mail, Phone, MapPin, Globe, ArrowUpRight, Sparkles, GraduationCap, Monitor, Check, Timer } from 'lucide-react';
 
 /** Small helper: adds .in when the element scrolls into view (one-shot). */
 function Reveal({ children, delay = 0, as: Tag = 'div', className = '' }) {
@@ -72,14 +73,14 @@ export default function Home() {
               instantly, and hear from us the moment it's solved.
             </p>
             <div className="hero__points">
-              <span>⚡ Fast response times</span>
-              <span>🛡 Secure &amp; reliable</span>
-              <span>👥 Professional support team</span>
+              <span><Zap size={14} style={{ verticalAlign: '-2px', marginRight: 5 }} aria-hidden="true" />Fast response times</span>
+              <span><ShieldCheck size={14} style={{ verticalAlign: '-2px', marginRight: 5 }} aria-hidden="true" />Secure &amp; reliable</span>
+              <span><Users size={14} style={{ verticalAlign: '-2px', marginRight: 5 }} aria-hidden="true" />Professional support team</span>
             </div>
             <div className="hero__actions">
-              <Link className="btn btn--primary" to="/new-ticket">Log a Complaint →</Link>
-              <Link className="btn btn--ghost" to="/track">🔍 Track Your Complaint</Link>
-              <Link className="btn btn--ghost" to="/contact">💬 Talk to ICT</Link>
+              <Link className="btn btn--primary" to="/new-ticket">Log a Complaint <ArrowRight size={15} style={{ verticalAlign: '-2px' }} /></Link>
+              <Link className="btn btn--ghost" to="/track"><Search size={15} style={{ verticalAlign: '-2px', marginRight: 5 }} />Track Your Complaint</Link>
+              <Link className="btn btn--ghost" to="/contact"><MessageCircle size={15} style={{ verticalAlign: '-2px', marginRight: 5 }} />Talk to ICT</Link>
             </div>
           </div>
           <div className="hero__photo">
@@ -94,7 +95,7 @@ export default function Home() {
         <Reveal>
           <div className="home-trackband">
             <div className="home-trackband__form">
-              <h3>🔍 Track Your Complaint</h3>
+              <h3><Search size={16} style={{ verticalAlign: '-3px', marginRight: 6 }} />Track Your Complaint</h3>
               <p className="muted">Enter your Tracking ID and the email you used — we'll show you exactly where things stand.</p>
               <form onSubmit={checkStatus} className="home-trackband__fields">
                 <input value={tn} onChange={(e) => setTn(e.target.value)} placeholder="Tracking ID — e.g. RGP-2026-A0001" required aria-label="Tracking ID" />
@@ -106,12 +107,12 @@ export default function Home() {
               )}
             </div>
             <div className="home-trackband__help">
-              <div className="home-help__ic">🆘</div>
+              <div className="home-help__ic"><LifeBuoy size={20} /></div>
               <h3>Need Immediate Help?</h3>
-              <p>🕐 Mon – Fri, 8:00 AM – 5:00 PM</p>
-              <p>✉ ecampus@rugipo.edu.ng</p>
-              <p>☎ +234803*******</p>
-              <p>📍 ICT Directorate, RUGIPO, Owo</p>
+              <p><Clock size={14} style={{ verticalAlign: '-2px', marginRight: 5 }} />Mon – Fri, 8:00 AM – 5:00 PM</p>
+              <p><Mail size={14} style={{ verticalAlign: '-2px', marginRight: 5 }} />ecampus@rugipo.edu.ng</p>
+              <p><Phone size={14} style={{ verticalAlign: '-2px', marginRight: 5 }} />+234803*******</p>
+              <p><MapPin size={14} style={{ verticalAlign: '-2px', marginRight: 5 }} />ICT Directorate, RUGIPO, Owo</p>
               <Link to="/contact" className="btn btn--outline btn--sm">Message the team →</Link>
             </div>
           </div>
@@ -164,23 +165,23 @@ export default function Home() {
             </div>
             <div className="portal-links__row">
               <a className="portal-links__item" href="https://ecampus.rugipo.edu.ng" target="_blank" rel="noopener noreferrer">
-                <span className="portal-links__ic">🌐</span>
+                <span className="portal-links__ic"><Globe size={18} /></span>
                 <span><strong>Main E-Campus</strong><small>ecampus.rugipo.edu.ng — everything starts here</small></span>
-                <span className="portal-links__go">↗</span>
+                <span className="portal-links__go"><ArrowUpRight size={16} /></span>
               </a>
               <a className="portal-links__item" href="https://ecampus.rugipo.edu.ng/putme" target="_blank" rel="noopener noreferrer">
-                <span className="portal-links__ic">🆕</span>
+                <span className="portal-links__ic"><Sparkles size={18} /></span>
                 <span><strong>New Students</strong><small>ecampus.rugipo.edu.ng/putme — PUTME screening &amp; fresh registration</small></span>
-                <span className="portal-links__go">↗</span>
+                <span className="portal-links__go"><ArrowUpRight size={16} /></span>
               </a>
               <a className="portal-links__item" href="https://ecampus.rugipo.edu.ng/portal" target="_blank" rel="noopener noreferrer">
-                <span className="portal-links__ic">🎒</span>
+                <span className="portal-links__ic"><GraduationCap size={18} /></span>
                 <span><strong>Returning Students</strong><small>ecampus.rugipo.edu.ng/portal — log in to your portal</small></span>
-                <span className="portal-links__go">↗</span>
+                <span className="portal-links__go"><ArrowUpRight size={16} /></span>
               </a>
             </div>
             <p className="portal-links__note">
-              Questions about the portal itself? Email <a href="mailto:ecampus@rugipo.edu.ng">ecampus@rugipo.edu.ng</a> or call ☎ +234803*******.
+              Questions about the portal itself? Email <a href="mailto:ecampus@rugipo.edu.ng">ecampus@rugipo.edu.ng</a> or call <Phone size={13} style={{ verticalAlign: '-2px', marginRight: 4 }} />+234803*******.
             </p>
           </div>
         </Reveal>
@@ -191,7 +192,7 @@ export default function Home() {
         <Reveal>
           <div className="services-band">
             <div className="services-band__main">
-              <div className="services-band__ic">🖥</div>
+              <div className="services-band__ic"><Monitor size={22} /></div>
               <div>
                 <strong>ICT Services We Support</strong>
                 <p>From portal access to payments, results and more — one place to report anything that is not working, and a real team that follows it through.</p>
@@ -200,7 +201,7 @@ export default function Home() {
             </div>
             <ul className="services-band__list">
               {(categories.length ? categories.slice(0, 10).map((c) => c.name) : ['Student Portal', 'Payments', 'Course Registration', 'Results', 'Email', 'CBT']).map((n) => (
-                <li key={n}>✓ {n}</li>
+                <li key={n}><Check size={13} style={{ verticalAlign: '-2px', marginRight: 4 }} />{n}</li>
               ))}
             </ul>
           </div>
@@ -212,17 +213,17 @@ export default function Home() {
         <Reveal>
           <div className="trust-strip">
             <div>
-              <span className="trust-strip__ic">🎓</span>
+              <span className="trust-strip__ic"><GraduationCap size={20} /></span>
               <strong>Your details stay yours</strong>
               <p>We only use your information to handle your complaint and update you — nothing else.</p>
             </div>
             <div>
-              <span className="trust-strip__ic">⏱</span>
+              <span className="trust-strip__ic"><Timer size={20} /></span>
               <strong>Nothing gets lost</strong>
               <p>Every complaint is numbered and tracked from the day it arrives until the day it is solved.</p>
             </div>
             <div>
-              <span className="trust-strip__ic">✉</span>
+              <span className="trust-strip__ic"><Mail size={20} /></span>
               <strong>You will hear from us</strong>
               <p>Emails go out when we receive it, when we reply, and the moment it is solved — no chasing us.</p>
             </div>

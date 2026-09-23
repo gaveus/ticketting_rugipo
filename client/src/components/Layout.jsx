@@ -1,6 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { Link, NavLink, Outlet, useLocation } from 'react-router-dom';
 import { useAuth } from '../auth.jsx';
+import { Mail, Phone } from 'lucide-react';
 
 const STATUS_LABELS = {
   open: 'Open', assigned: 'Assigned', in_progress: 'In Progress',
@@ -144,8 +145,8 @@ export default function Layout() {
               <strong>Rufus Giwa Polytechnic, Owo — ICT Directorate</strong><br />
               ICT Support Ticketing System · Advancement Through Technology<br />
               <span className="site-footer__contact">
-                ✉ <a href="mailto:ecampus@rugipo.edu.ng">ecampus@rugipo.edu.ng</a>
-                 · ☎ +234803*******
+                <Mail size={14} style={{ verticalAlign: '-2px', marginRight: 4 }} /><a href="mailto:ecampus@rugipo.edu.ng">ecampus@rugipo.edu.ng</a>
+                 · <Phone size={14} style={{ verticalAlign: '-2px', marginLeft: 6, marginRight: 4 }} />+234803*******
               </span>
             </div>
           </div>

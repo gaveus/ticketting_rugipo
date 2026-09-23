@@ -1,6 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import { useLiveChat } from '../hooks/useLiveChat';
+import { Link2, ArrowRight } from 'lucide-react';
 
 /**
  * Live chat for a student's question — no account needed, instant over
@@ -50,10 +51,10 @@ export default function Chat() {
     return (
       <section className="section container" style={{ maxWidth: 620 }}>
         <div className="card" style={{ textAlign: 'center', padding: '38px 26px' }}>
-          <div style={{ fontSize: '2.4rem' }}>🔗</div>
+          <div style={{ fontSize: '2.4rem' }}><Link2 size={30} /></div>
           <h2 style={{ margin: '10px 0 6px' }}>This link is not valid</h2>
           <p className="muted">The conversation link may be old or mistyped. Check the email we sent you, or start fresh below.</p>
-          <Link to="/contact" className="btn btn--navy mt">Message ICT again →</Link>
+          <Link to="/contact" className="btn btn--navy mt">Message ICT again <ArrowRight size={15} style={{ verticalAlign: '-2px' }} /></Link>
         </div>
       </section>
     );
@@ -81,7 +82,7 @@ export default function Chat() {
           <div className="chat-card__body chat-closed">
             <h3>Conversation closed</h3>
             <div className="row" style={{ gap: 10, justifyContent: 'center', marginTop: 14 }}>
-              <Link to="/contact" className="btn btn--navy">Message ICT →</Link>
+              <Link to="/contact" className="btn btn--navy">Message ICT <ArrowRight size={15} style={{ verticalAlign: '-2px' }} /></Link>
               <Link to="/new-ticket" className="btn btn--outline">Log a complaint instead</Link>
             </div>
           </div>
@@ -125,7 +126,7 @@ export default function Chat() {
                 aria-label="Type your message"
               />
               <button className={`btn btn--navy ${busy ? 'btn--busy' : ''}`} disabled={busy || !text.trim()}>
-                {busy ? ' ' : 'Send →'}
+                {busy ? ' ' : <>Send <ArrowRight size={14} style={{ verticalAlign: '-2px' }} /></>}
               </button>
             </form>
             <p className="muted chat-card__note">

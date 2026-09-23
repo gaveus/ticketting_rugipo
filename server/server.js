@@ -87,7 +87,8 @@ app.use((err, req, res, next) => {
   res.status(500).json({ error: 'Something went wrong. Please try again.' });
 });
 
-const PORT = process.env.PORT || 4010;
+const _envPort = parseInt(process.env.PORT, 10);
+const PORT = Number.isFinite(_envPort) && _envPort > 0 ? _envPort : 4010; // a junk PORT must never bind port 0
 
 // Vercel's serverless runtime imports the app and listens itself — starting a
 // server there would crash. Local/node hosting (npm run dev, Railway, Render)

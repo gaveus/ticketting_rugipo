@@ -17,6 +17,7 @@ const { db, nextTicketNumber, LEVEL_VALUES, MODE_VALUES } = require('../db');
 const { queueEmail } = require('../notify');
 const { requireStaff } = require('../auth');
 const { upload, UPLOAD_DIR, cloudinaryUpload, cloudinaryUrl } = require('../uploads');
+const realtime = require('../realtime');
 
 const router = express.Router();
 
@@ -389,6 +390,8 @@ router.post('/contact', async (req, res) => {
   // The opening message doubles as the first line of the live conversation.
   await db.run(`INSERT INTO chat_messages (message_id, sender, sender_name, body) VALUES (?, 'student', ?, ?)`,
     r.lastInsertRowid, senderName, message);
+  // New question → every officer's "Student questions" badge refreshes live.
+  realtime.inboxBadge();
 
   // Instant acknowledgement so the student knows it arrived.
   queueEmail({
@@ -413,11 +416,13 @@ router.get('/chat/:token', async (req, res) => {
   // Presence: opening the conversation marks "student opened the chat" for the
   // ICT inbox, and every reply/update below it shows staff presence back.
   await db.run('UPDATE contact_messages SET student_opened_at = now() WHERE id = ?', m.id);
+  realtime.chatOpened(m.id, new Date().toISOString());
   const messages = m.closed_at ? [] : await db.all(
     'SELECT id, sender, sender_name, body, created_at FROM chat_messages WHERE message_id = ? ORDER BY created_at, id', m.id);
   const staffTyping = !m.closed_at && m.staff_typing_at
     && (Date.now() - new Date(m.staff_typing_at).getTime()) < 8000;
   res.json({
+    id: m.id, // lets the student side join the same live channel as staff
     subject: m.subject, studentName: m.sender_name, closed: !!m.closed_at,
     closedAt: m.closed_at, messages,
     staffTyping,
@@ -430,6 +435,7 @@ router.post('/chat/:token/typing', async (req, res) => {
   const m = await db.get('SELECT id FROM contact_messages WHERE chat_token = ?', String(req.params.token));
   if (!m) return res.status(404).json({ error: 'This conversation link is not valid' });
   await db.run('UPDATE contact_messages SET student_typing_at = now() WHERE id = ?', m.id);
+  realtime.chatTyping(m.id, 'student');
   res.json({ ok: true });
 });
 
@@ -446,6 +452,7 @@ router.post('/chat/:token', async (req, res) => {
   // websocket (the ICT inbox and any second tab) — Messenger-style.
   wsApi.fanoutStaffSnapshot?.(m.id);
   wsApi.fanoutStudentSnapshot?.(m.chat_token);
+  realtime.chatRefresh(m.id);
   res.json({ ok: true });
 });
 
@@ -457,6 +464,8 @@ router.post('/chat/:token/close', async (req, res) => {
   // Tell the ICT side instantly (their thread empties and flips to closed).
   wsApi.broadcastStaffClosed?.(m.id);
   wsApi.fanoutStaffSnapshot?.(m.id);
+  realtime.chatClosed(m.id);
+  realtime.chatRefresh(m.id);
   res.json({ ok: true });
 });
 

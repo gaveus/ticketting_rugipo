@@ -1,6 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { api, fmtDateTime, fmtDate } from '../auth.jsx';
+import { Mail, Search } from 'lucide-react';
 import TicketView from '../components/TicketView.jsx';
 
 const STATUS_FLOW = [
@@ -20,9 +21,9 @@ function ResendHelpers({ email }) {
     try {
       await api('/recover', { method: 'POST', body: JSON.stringify({ kind, email }) });
       setMsg(kind === 'chat'
-        ? `✉ Sent — every active conversation link for ${email} has been re-emailed.`
-        : `✉ Sent — your Tracking IDs have been re-emailed to ${email}.`);
-    } catch (e) { setMsg(`⚠ ${e.message}`); }
+        ? `Sent — every active conversation link for ${email} has been re-emailed.`
+        : `Sent — your Tracking IDs have been re-emailed to ${email}.`);
+    } catch (e) { setMsg(e.message); }
     finally { setBusy(''); }
   }
 
@@ -35,11 +36,11 @@ function ResendHelpers({ email }) {
       <div className="row" style={{ gap: 8, flexWrap: 'wrap' }}>
         <button type="button" className="btn btn--outline btn--sm" disabled={!!busy || !email}
           onClick={() => resend('ids')}>
-          {busy === 'ids' ? 'Sending…' : '✉ Re-send my Tracking ID'}
+          {busy === 'ids' ? 'Sending…' : <><Mail size={14} style={{ verticalAlign: '-2px', marginRight: 5 }} />Re-send my Tracking ID</>}
         </button>
         <button type="button" className="btn btn--outline btn--sm" disabled={!!busy || !email}
           onClick={() => resend('chat')}>
-          {busy === 'chat' ? 'Sending…' : '✉ Re-send my chat link'}
+          {busy === 'chat' ? 'Sending…' : <><Mail size={14} style={{ verticalAlign: '-2px', marginRight: 5 }} />Re-send my chat link</>}
         </button>
       </div>
       {msg && <p className="muted" style={{ fontSize: '.84rem', margin: '8px 0 0' }}>{msg}</p>}
@@ -114,7 +115,7 @@ export default function Track() {
             </label>
           </div>
           <button className="btn btn--navy" disabled={busy} style={{ width: '100%' }}>
-            {busy ? 'Checking…' : '🔍 Track my complaint'}
+            {busy ? 'Checking…' : <><Search size={14} style={{ verticalAlign: '-2px', marginRight: 5 }} />Track my complaint</>}
           </button>
         </form>
 

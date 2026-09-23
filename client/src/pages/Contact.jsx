@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { api } from '../auth.jsx';
+import { Inbox as InboxIcon, ArrowRight } from 'lucide-react';
 
 /**
  * Reach ICT — for questions, clarifications and anything that is not (yet) a
@@ -38,7 +39,7 @@ export default function Contact() {
 
       {done ? (
         <div className="card" style={{ textAlign: 'center' }}>
-          <div style={{ fontSize: '2rem' }}>📨</div>
+          <div style={{ fontSize: '2rem' }}><InboxIcon size={30} /></div>
           <h2 className="section__title">Message sent</h2>
           <p className="section__sub">
             We've sent a confirmation to <strong>{form.email}</strong>. A member of the ICT team
@@ -47,11 +48,11 @@ export default function Contact() {
           {chatUrl && (
             <div className="notice notice--info" style={{ textAlign: 'left' }}>
               <strong>Want to talk live?</strong> Your private chat room is open — the same link is in
-              your email. <Link to={chatUrl}>Open the conversation now →</Link>
+              your email. <Link to={chatUrl}>Open the conversation now <ArrowRight size={13} style={{ verticalAlign: '-2px' }} /></Link>
             </div>
  )}
           <div className="row" style={{ justifyContent: 'center' }}>
-            <Link className="btn btn--navy" to="/new-ticket">Log a complaint instead →</Link>
+            <Link className="btn btn--navy" to="/new-ticket">Log a complaint instead <ArrowRight size={15} style={{ verticalAlign: '-2px' }} /></Link>
             <Link className="btn btn--outline" to="/">Back to home</Link>
           </div>
         </div>

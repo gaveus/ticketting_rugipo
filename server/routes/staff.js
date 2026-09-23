@@ -24,6 +24,7 @@ const router = express.Router();
 // tabs) update instantly — no refresh, no polling wait.
 let wsApi = {};
 function setChatPush(api) { wsApi = api || {}; }
+const realtime = require('../realtime');
 router.setChatPush = setChatPush;
 router.use(requireAuth, requireStaff);
 
@@ -195,6 +196,7 @@ router.post('/inbox/:id/reply', async (req, res) => {
     m.id, req.user.full_name, reply.slice(0, 4000));
   wsApi.fanoutStaffSnapshot?.(m.id);
   wsApi.fanoutStudentSnapshot?.(m.chat_token);
+  realtime.chatRefresh(m.id);
   // The live chat IS the reply channel — it pushes to the student's open
   // window instantly. Email only when ICT explicitly chooses "Email it".
   if (req.body?.emailIt) {
@@ -232,6 +234,7 @@ router.get('/inbox/:id/chat', async (req, res) => {
 /** Officer is typing — the student's chat shows "ICT Support is typing…". */
 router.post('/inbox/:id/typing', async (req, res) => {
   await db.run('UPDATE contact_messages SET staff_typing_at = now() WHERE id = ?', req.params.id);
+  realtime.chatTyping(Number(req.params.id), 'staff');
   res.json({ ok: true });
 });
 
@@ -251,6 +254,7 @@ router.post('/inbox/:id/chat', async (req, res) => {
   // own tab when the websocket hiccups).
   wsApi.fanoutStaffSnapshot?.(m.id);
   wsApi.fanoutStudentSnapshot?.(m.chat_token);
+  realtime.chatRefresh(m.id);
   res.json({ ok: true });
 });
 
@@ -264,6 +268,9 @@ router.post('/inbox/:id/close', async (req, res) => {
   // Flip every open chat window (student's included) to "closed" instantly.
   wsApi.broadcastStudentClosed?.(m.chat_token);
   wsApi.broadcastStaffClosed?.(m.id);
+  realtime.chatClosed(m.id);
+  realtime.chatRefresh(m.id);
+  realtime.inboxBadge();
   audit(req, 'inbox.close', m.id, { note: 'conversation closed' });
   res.json({ ok: true });
 });

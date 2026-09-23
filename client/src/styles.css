@@ -752,6 +752,12 @@ button.admin-nav-group__label:hover span { color: var(--ink); }
 @media (max-width: 560px) { .services-band__list { grid-template-columns: 1fr; } }
 .services-band__list li { opacity: .95; }
 
+/* ═══════════ coded icons (lucide) inside legacy glyph slots ═══════════ */
+.trust-strip__ic { display: grid; place-items: center; color: var(--green); }
+.services-band__ic svg, .portal-links__ic svg, .trust-strip__ic svg,
+.bn-ic svg, .evidence-item__icon svg, .stage-rail__dot svg { display: block; }
+.evidence-item__icon { display: inline-flex; align-items: center; justify-content: center; color: var(--muted); }
+
 /* ═══════════ inbox search & filter (scales to thousands of messages) ═══════════ */
 .inbox-toolbar {
   display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
