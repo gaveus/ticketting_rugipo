@@ -132,16 +132,15 @@ export default function NewTicket() {
           ...(isPaymentIssue ? payment : {}),
           ...(isOtherIssue ? other : {}) }),
       };
-      // regNo goes in the payload top-level; details JSON carries the guided answers
-      const created = await api('/tickets', { method: 'POST', body: JSON.stringify(payload) });
-
-      if (files.length) {
-        const fd = new FormData();
-        for (const f of files) fd.append('files', f);
-        await apiUpload(`/tickets/${created.ticketId}/attachments`, fd, details.email).catch(() => {
-          setError('Complaint submitted, but a file was rejected. You can attach it from the tracking page.');
-        });
+      // One multipart request carries the complaint AND its files together, so
+      // the server can enforce "payment complaints need their receipt" at the
+      // moment of creation (the old two-step flow could never satisfy it).
+      const fd = new FormData();
+      for (const [k, v] of Object.entries(payload)) {
+        if (v !== undefined && v !== null) fd.append(k, String(v));
       }
+      for (const f of files) fd.append('files', f);
+      const created = await apiUpload('/tickets', fd);
       setResult(created);
       setStep(5);
     } catch (e) {
