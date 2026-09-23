@@ -155,7 +155,23 @@ export default function Home() {
           <Reveal delay={120} className="how-grid__aside">
             <div className="portal-panel">
               <div className="portal-panel__top">
-                <span className="portal-panel__art"><Monitor size={26} /></span>
+                <span className="portal-panel__art" aria-hidden="true">
+                  {/* Hand-coded laptop illustration — support chat on screen */}
+                  <svg viewBox="0 0 96 66" role="img" aria-label="Laptop with a support chat bubble">
+                    <rect x="58" y="0" width="32" height="20" rx="6" fill="#f7c600" />
+                    <path d="M66 20 l-4 8 11 -8 z" fill="#f7c600" />
+                    <circle cx="67" cy="10" r="2.3" fill="#0b3d1f" />
+                    <circle cx="74" cy="10" r="2.3" fill="#0b3d1f" />
+                    <circle cx="81" cy="10" r="2.3" fill="#0b3d1f" />
+                    <rect x="18" y="8" width="54" height="38" rx="6" fill="#0b3d1f" />
+                    <rect x="22" y="12" width="46" height="30" rx="3" fill="#ffffff" />
+                    <rect x="27" y="17" width="22" height="3.5" rx="1.75" fill="#cfe3d6" />
+                    <rect x="27" y="24" width="32" height="3.5" rx="1.75" fill="#cfe3d6" />
+                    <rect x="27" y="31" width="16" height="3.5" rx="1.75" fill="#f7c600" />
+                    <path d="M12 48 H78 L84 60 Q85 63 81 63 H9 Q5 63 6 60 Z" fill="#0b3d1f" />
+                    <rect x="38" y="52" width="14" height="3.4" rx="1.7" fill="#3f7a58" />
+                  </svg>
+                </span>
                 <div>
                   <strong>Visit the official school portal</strong>
                   <p>The ICT Support desk you are on now handles complaints. For registration, fees payment and everything else, use the main E-Campus website below.</p>
@@ -165,17 +181,13 @@ export default function Home() {
                 <Globe size={15} style={{ verticalAlign: '-2px', marginRight: 6 }} />Go to E-Campus Portal <ArrowUpRight size={15} style={{ verticalAlign: '-2px', marginLeft: 4 }} />
               </a>
               <div className="portal-panel__links">
-                <a href="https://ecampus.rugipo.edu.ng" target="_blank" rel="noopener noreferrer">
-                  <span className="portal-links__ic"><Globe size={15} /></span>
-                  <span><strong>Main E-Campus</strong><small>ecampus.rugipo.edu.ng</small></span>
-                </a>
                 <a href="https://ecampus.rugipo.edu.ng/putme" target="_blank" rel="noopener noreferrer">
-                  <span className="portal-links__ic"><Sparkles size={15} /></span>
-                  <span><strong>New Students</strong><small>PUTME screening &amp; fresh registration</small></span>
+                  <span className="portal-panel__badge"><Sparkles size={16} /></span>
+                  <span><strong>New Students</strong><small>PUTME screening &amp; fresh registration · ecampus.rugipo.edu.ng/putme</small></span>
                 </a>
                 <a href="https://ecampus.rugipo.edu.ng/portal" target="_blank" rel="noopener noreferrer">
-                  <span className="portal-links__ic"><GraduationCap size={15} /></span>
-                  <span><strong>Returning Students</strong><small>log in to your portal</small></span>
+                  <span className="portal-panel__badge"><GraduationCap size={16} /></span>
+                  <span><strong>Returning Students</strong><small>Log in to your student portal · ecampus.rugipo.edu.ng/portal</small></span>
                 </a>
               </div>
             </div>
