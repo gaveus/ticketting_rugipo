@@ -58,7 +58,7 @@ export default function Layout() {
   const firstName = user ? user.fullName.split(/\s+/)[0] : '';
   const initials = user ? user.fullName.split(/\s+/).map((w) => w[0]).slice(0, 2).join('').toUpperCase() : '';
   const roleLabel = user
-    ? (user.role === 'admin' ? 'Administrator' : user.role === 'senior' ? 'Senior Engineer' : 'ICT Support Staff')
+    ? (user.role === 'admin' ? 'Administrator' : user.role === 'senior' ? (user.specialty === 'payment' ? 'Payment Gateway Provider' : 'Portal Support Engineer') : 'ICT Support Staff')
     : '';
 
   return (

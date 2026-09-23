@@ -127,7 +127,7 @@ export default function StaffTicket() {
   async function escalate() {
     if (actionNote.trim().length < 5) { setMsg('An escalation reason is required (at least 5 characters).'); return; }
     await act(`/staff/tickets/${id}/status`, { status: 'escalated', note: actionNote.trim() },
-      'Escalated — Senior Engineers have been notified by email.');
+      'Escalated — the specialist engineers for this desk have been notified by email.');
   }
 
   const staffMsgs = messages.filter((m) => ['staff', 'senior', 'admin'].includes(m.sender_role));
@@ -144,7 +144,7 @@ export default function StaffTicket() {
           <div className="detail-head__id">
             <h2 className="section__title" style={{ marginBottom: 0 }}>{ticket.ticket_number}</h2>
             <span className={`badge badge--${ticket.status}`}>{STATUS_LABELS[ticket.status]}</span>
-            {isEscalated && <span className="badge badge--escalated">Needs Senior Engineer</span>}
+            {isEscalated && <span className="badge badge--escalated">With Specialist Engineer</span>}
             <span className={`badge ${ticket.priority === 'urgent' || ticket.priority === 'high' ? 'badge--rejected' : ''}`}>{ticket.priority}</span>
           </div>
           <p className="muted" style={{ margin: '6px 0 0' }}>
@@ -169,7 +169,7 @@ export default function StaffTicket() {
         </div>
         {isEscalated && !isSeniorPlus && (
           <p className="muted" style={{ margin: 0, flexBasis: '100%' }}>
-            <ArrowUp size={13} style={{ verticalAlign: '-2px', marginRight: 4 }} />This complaint is with the Senior Engineers now — you can still reply to the student and add internal notes below; only a Senior Engineer can resolve it.
+            <ArrowUp size={13} style={{ verticalAlign: '-2px', marginRight: 4 }} />This complaint is with the specialist engineers now — you can still reply to the student and add internal notes below; only they can resolve it.
           </p>
         )}
         {canResolve && (
@@ -180,7 +180,7 @@ export default function StaffTicket() {
         )}
         {canEscalate && (
           <button className="btn btn--escalate" disabled={busy} onClick={() => { setPanel(panel === 'escalate' ? null : 'escalate'); setActionNote(''); }}>
-            <ArrowUp size={16} style={{ verticalAlign: '-3px', marginRight: 5 }} />Send to Senior Engineers
+            <ArrowUp size={16} style={{ verticalAlign: '-3px', marginRight: 5 }} />Send to Specialist Engineer
             <small>For problems beyond first-line — they take it from here</small>
           </button>
         )}
@@ -207,9 +207,9 @@ export default function StaffTicket() {
       )}
       {panel === 'escalate' && (
         <div className="card card--action mb">
-          <strong><ArrowUp size={15} style={{ verticalAlign: '-2px', marginRight: 5 }} />Send to Senior Engineers</strong>
+          <strong><ArrowUp size={15} style={{ verticalAlign: '-2px', marginRight: 5 }} />Send to Specialist Engineer</strong>
           <p className="muted" style={{ fontSize: '.88rem', margin: '4px 0 8px' }}>
-            Explains <em>why</em> — this note is emailed to every Senior Engineer and stored on the escalation record.
+            Explains <em>why</em> — this note is emailed to the engineers for this desk and stored on the escalation record.
             {isSuper ? ' Super ICT Support sees every desk.' : ''}
           </p>
           <textarea rows={2} placeholder="e.g. Payment confirmed in Appiawave but the portal still shows unpaid after 48 hours — needs a senior engineer."

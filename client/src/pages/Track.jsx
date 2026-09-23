@@ -7,7 +7,7 @@ import TicketView from '../components/TicketView.jsx';
 const STATUS_FLOW = [
   ['open', 'Received', 'We have your complaint and it is in the queue.'],
   ['in_progress', 'Being worked on', 'An ICT officer is actively on it.'],
-  ['escalated', 'Senior review', 'A Senior Engineer is handling it personally.'],
+  ['escalated', 'Specialist review', 'A specialist engineer is handling it personally.'],
   ['resolved', 'Solved', 'It is fixed — we have emailed you the details.'],
 ];
 

@@ -45,7 +45,7 @@ export default function StaffEscalations() {
 
   if (!isSenior) return (
     <section className="section container" style={{ maxWidth: 560 }}>
-      <div className="card"><h2 className="section__title">Senior Engineers only</h2>
+      <div className="card"><h2 className="section__title">Specialist engineers only</h2>
         <p className="section__sub">This queue shows tickets escalated by ICT Support Staff.</p>
         <Link className="btn btn--navy" to="/admin">Staff sign in</Link></div>
     </section>

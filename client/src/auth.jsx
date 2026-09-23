@@ -3,10 +3,30 @@ import React, { createContext, useContext, useEffect, useState } from 'react';
 const AuthContext = createContext(null);
 const KEY = 'rugipo.staff';
 
+/**
+ * §6/§39 — every technical failure becomes one honest, human sentence.
+ * No status codes, no routes, no stack traces, no server internals.
+ */
+export function humanizeError(status, serverMessage) {
+  if (serverMessage && !/[(){}]|\bapi\b|\bsql\b|\bjwt\b|status \d/i.test(serverMessage)) return serverMessage;
+  switch (status) {
+    case 400: return 'Please check the information you entered and try again.';
+    case 401: return 'Your session has ended. Please sign in again.';
+    case 403: return 'You do not have permission to do that.';
+    case 404: return 'We could not find what you were looking for. It may have been removed.';
+    case 409: return 'That already exists — check for a duplicate before trying again.';
+    case 422: return 'Some details need correcting before this can be saved.';
+    case 429: return 'Too many attempts too quickly. Please wait a moment and try again.';
+    case 502: case 504: return 'The service is temporarily unreachable. Please try again in a moment.';
+    case 503: return 'The service is busy right now. Please try again in a moment.';
+    default: return 'Something went wrong while processing your request. Please try again. If the problem continues, contact ICT Support.';
+  }
+}
+
 export function api(path, options = {}) {
   const raw = localStorage.getItem(KEY);
   const token = raw ? JSON.parse(raw).token : null;
-  return fetch(`/api${path}`, {
+  const attempt = fetch(`/api${path}`, {
     ...options,
     headers: {
       'Content-Type': 'application/json',
@@ -20,8 +40,14 @@ export function api(path, options = {}) {
       try { localStorage.removeItem(KEY); } catch { /* ignore */ }
     }
     const data = await r.json().catch(() => ({}));
-    if (!r.ok) throw new Error(data.error || `Request failed (${r.status})`);
+    if (!r.ok) throw new Error(humanizeError(r.status, data.error));
     return data;
+  });
+  // A dead network must not produce a raw "Failed to fetch" — say it in words.
+  return attempt.catch((e) => {
+    if (e instanceof TypeError && !navigator.onLine) throw new Error('You appear to be offline. Please check your internet connection and try again.');
+    if (e instanceof TypeError) throw new Error('We could not reach the ICT Support system. Please check your connection and try again.');
+    throw e;
   });
 }
 

@@ -147,7 +147,7 @@ export default function AdminProfile() {
                 <label className="field"><span>Work email</span><input value={me.email} disabled /></label>
                 <label className="field"><span>Staff ID</span><input value={me.staffNo || '—'} disabled /></label>
                 <label className="field"><span>Role</span>
-                  <input value={me.role === 'admin' ? 'Super ICT Support' : me.role === 'senior' ? 'Senior Engineer' : 'ICT Support Staff'} disabled />
+                  <input value={me.role === 'admin' ? 'Super ICT Support' : me.role === 'senior' ? (me.specialty === 'payment' ? 'Payment Gateway Provider' : 'Portal Support Engineer') : 'ICT Support Staff'} disabled />
                 </label>
                 <label className="field"><span>Gender</span>
                   <select value={details.gender} required onChange={(e) => setDetails({ ...details, gender: e.target.value })}>

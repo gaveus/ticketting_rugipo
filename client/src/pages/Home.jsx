@@ -1,7 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { api } from '../auth.jsx';
-import { Zap, ShieldCheck, Users, ArrowRight, Search, MessageCircle, LifeBuoy, Clock, Mail, Phone, MapPin, Globe, ArrowUpRight, Sparkles, GraduationCap, Monitor, Check, Timer } from 'lucide-react';
+import { Zap, ShieldCheck, Users, ArrowRight, Search, MessageCircle, LifeBuoy, Clock, Mail, Phone, MapPin, Globe, ArrowUpRight, Sparkles, GraduationCap, Monitor, Check, Timer, ClipboardList, Settings2 } from 'lucide-react';
 
 /** Small helper: adds .in when the element scrolls into view (one-shot). */
 function Reveal({ children, delay = 0, as: Tag = 'div', className = '' }) {
@@ -66,26 +66,28 @@ export default function Home() {
         <div className="hero__inner container">
           <div className="hero__copy">
             <span className="hero__badge">Rufus Giwa Polytechnic, Owo</span>
-            <h1>We're Here to Help</h1>
+            <h1>We're Here to <em className="hero__accent">Help</em></h1>
             <p>
               Report ICT issues, track your complaints and get the support you need —
               <strong> quickly and easily</strong>. Log it in under a minute, get a Tracking ID
               instantly, and hear from us the moment it's solved.
             </p>
-            <div className="hero__points">
-              <span><Zap size={14} style={{ verticalAlign: '-2px', marginRight: 5 }} aria-hidden="true" />Fast response times</span>
-              <span><ShieldCheck size={14} style={{ verticalAlign: '-2px', marginRight: 5 }} aria-hidden="true" />Secure &amp; reliable</span>
-              <span><Users size={14} style={{ verticalAlign: '-2px', marginRight: 5 }} aria-hidden="true" />Professional support team</span>
+            <div className="hero__chips">
+              <span className="chip chip--glass"><Zap size={15} aria-hidden="true" />Fast response times</span>
+              <span className="chip chip--glass"><ShieldCheck size={15} aria-hidden="true" />Secure &amp; reliable</span>
+              <span className="chip chip--glass"><Users size={15} aria-hidden="true" />Professional support team</span>
             </div>
             <div className="hero__actions">
-              <Link className="btn btn--primary" to="/new-ticket">Log a Complaint <ArrowRight size={15} style={{ verticalAlign: '-2px' }} /></Link>
-              <Link className="btn btn--ghost" to="/track"><Search size={15} style={{ verticalAlign: '-2px', marginRight: 5 }} />Track Your Complaint</Link>
-              <Link className="btn btn--ghost" to="/contact"><MessageCircle size={15} style={{ verticalAlign: '-2px', marginRight: 5 }} />Talk to ICT</Link>
+              <Link className="btn btn--gold" to="/new-ticket"><Zap size={15} style={{ verticalAlign: '-2px' }} /> Log a Complaint <ArrowRight size={15} style={{ verticalAlign: '-2px' }} /></Link>
+              <Link className="btn btn--ghost" to="/track"><Search size={15} style={{ verticalAlign: '-2px', marginRight: 6 }} />Track Your Complaint</Link>
             </div>
           </div>
           <div className="hero__photo">
             <img src="/rugipo-gate.png" alt="Rufus Giwa Polytechnic main gate, Owo" />
-            <span className="hero__photo-cap">ICT Support Unit · Advancement Through Technology</span>
+            <span className="hero__photo-chip">
+              <MapPin size={14} aria-hidden="true" />
+              <span><strong>ICT Support Unit</strong><small>Advancement Through Technology</small></span>
+            </span>
           </div>
         </div>
       </section>
@@ -119,72 +121,66 @@ export default function Home() {
         </Reveal>
       </section>
 
-      {/* ---------------------- how it works — one story, no cards ---------------------- */}
+      {/* ------------- how it works + portal panel, one composed row ------------- */}
       <section id="how-it-works" className="section container" style={{ paddingTop: 8 }}>
-        <Reveal>
-          <h2 className="section__title">How it works</h2>
-          <p className="section__sub">Three simple steps — no sign-up, no password, no stress.</p>
-        </Reveal>
-        <Reveal delay={80}>
-          <ol className="steps-flow">
-            <li>
-              <span className="steps-flow__num">1</span>
-              <div>
-                <strong>Tell us what happened</strong>
-                <p>Your name, matric number and a short description of the problem. It takes less than a minute.</p>
-                <Link to="/new-ticket" className="steps-flow__cta">Start a complaint →</Link>
+        <div className="how-grid">
+          <div className="how-grid__steps">
+            <Reveal>
+              <h2 className="section__title">How it works</h2>
+              <p className="section__sub">Three simple steps — no sign-up, no password, no stress.</p>
+            </Reveal>
+            <Reveal delay={80}>
+              <div className="steps-cols">
+                <div className="step-col">
+                  <div className="step-col__head"><span className="step-col__num">1</span><span className="step-col__ic"><ClipboardList size={18} /></span></div>
+                  <strong>Tell us what happened</strong>
+                  <p>Your name, matric number and a short description of the problem. It takes less than a minute.</p>
+                  <Link to="/new-ticket" className="steps-flow__cta">Start a complaint <ArrowRight size={13} style={{ verticalAlign: '-2px' }} /></Link>
+                </div>
+                <div className="step-col">
+                  <div className="step-col__head"><span className="step-col__num">2</span><span className="step-col__ic"><Settings2 size={18} /></span></div>
+                  <strong>Keep your Tracking ID</strong>
+                  <p>It appears the moment you finish — something like RGP-2026-A0001 — and a copy goes to your email.</p>
+                  <Link to="/track" className="steps-flow__cta">See how tracking works <ArrowRight size={13} style={{ verticalAlign: '-2px' }} /></Link>
+                </div>
+                <div className="step-col">
+                  <div className="step-col__head"><span className="step-col__num">3</span><span className="step-col__ic"><Mail size={18} /></span></div>
+                  <strong>Relax and get updates</strong>
+                  <p>ICT picks it up and emails you at every important step — especially when it's SOLVED.</p>
+                  <a href="#updates" className="steps-flow__cta">Read recent updates <ArrowRight size={13} style={{ verticalAlign: '-2px' }} /></a>
+                </div>
               </div>
-            </li>
-            <li>
-              <span className="steps-flow__num">2</span>
-              <div>
-                <strong>Keep your Tracking ID</strong>
-                <p>It appears the moment you finish — something like RGP-2026-A0001 — and a copy goes to your email.</p>
-                <Link to="/track" className="steps-flow__cta">See how tracking works →</Link>
-              </div>
-            </li>
-            <li>
-              <span className="steps-flow__num">3</span>
-              <div>
-                <strong>Relax and get updates</strong>
-                <p>ICT picks it up and emails you at every important step — especially when it is SOLVED.</p>
-                <a href="#updates" className="steps-flow__cta">Read recent updates ↓</a>
-              </div>
-            </li>
-          </ol>
-        </Reveal>
-      </section>
-
-      {/* ------------------- official E-Campus portal links ------------------- */}
-      <section className="section container" style={{ paddingTop: 0 }}>
-        <Reveal>
-          <div className="portal-links">
-            <div className="portal-links__head">
-              <strong>Visit the official school portal</strong>
-              <p>The ICT Support desk you are on now handles complaints. For registration, fees payment and everything else, use the main E-Campus website below.</p>
-            </div>
-            <div className="portal-links__row">
-              <a className="portal-links__item" href="https://ecampus.rugipo.edu.ng" target="_blank" rel="noopener noreferrer">
-                <span className="portal-links__ic"><Globe size={18} /></span>
-                <span><strong>Main E-Campus</strong><small>ecampus.rugipo.edu.ng — everything starts here</small></span>
-                <span className="portal-links__go"><ArrowUpRight size={16} /></span>
-              </a>
-              <a className="portal-links__item" href="https://ecampus.rugipo.edu.ng/putme" target="_blank" rel="noopener noreferrer">
-                <span className="portal-links__ic"><Sparkles size={18} /></span>
-                <span><strong>New Students</strong><small>ecampus.rugipo.edu.ng/putme — PUTME screening &amp; fresh registration</small></span>
-                <span className="portal-links__go"><ArrowUpRight size={16} /></span>
-              </a>
-              <a className="portal-links__item" href="https://ecampus.rugipo.edu.ng/portal" target="_blank" rel="noopener noreferrer">
-                <span className="portal-links__ic"><GraduationCap size={18} /></span>
-                <span><strong>Returning Students</strong><small>ecampus.rugipo.edu.ng/portal — log in to your portal</small></span>
-                <span className="portal-links__go"><ArrowUpRight size={16} /></span>
-              </a>
-            </div>
-            <p className="portal-links__note">
-              Questions about the portal itself? Email <a href="mailto:ecampus@rugipo.edu.ng">ecampus@rugipo.edu.ng</a> or call <Phone size={13} style={{ verticalAlign: '-2px', marginRight: 4 }} />+234803*******.
-            </p>
+            </Reveal>
           </div>
-        </Reveal>
+          <Reveal delay={120} className="how-grid__aside">
+            <div className="portal-panel">
+              <div className="portal-panel__top">
+                <span className="portal-panel__art"><Monitor size={26} /></span>
+                <div>
+                  <strong>Visit the official school portal</strong>
+                  <p>The ICT Support desk you are on now handles complaints. For registration, fees payment and everything else, use the main E-Campus website below.</p>
+                </div>
+              </div>
+              <a className="portal-panel__cta" href="https://ecampus.rugipo.edu.ng" target="_blank" rel="noopener noreferrer">
+                <Globe size={15} style={{ verticalAlign: '-2px', marginRight: 6 }} />Go to E-Campus Portal <ArrowUpRight size={15} style={{ verticalAlign: '-2px', marginLeft: 4 }} />
+              </a>
+              <div className="portal-panel__links">
+                <a href="https://ecampus.rugipo.edu.ng" target="_blank" rel="noopener noreferrer">
+                  <span className="portal-links__ic"><Globe size={15} /></span>
+                  <span><strong>Main E-Campus</strong><small>ecampus.rugipo.edu.ng</small></span>
+                </a>
+                <a href="https://ecampus.rugipo.edu.ng/putme" target="_blank" rel="noopener noreferrer">
+                  <span className="portal-links__ic"><Sparkles size={15} /></span>
+                  <span><strong>New Students</strong><small>PUTME screening &amp; fresh registration</small></span>
+                </a>
+                <a href="https://ecampus.rugipo.edu.ng/portal" target="_blank" rel="noopener noreferrer">
+                  <span className="portal-links__ic"><GraduationCap size={15} /></span>
+                  <span><strong>Returning Students</strong><small>log in to your portal</small></span>
+                </a>
+              </div>
+            </div>
+          </Reveal>
+        </div>
       </section>
 
       {/* ------------------- ICT services band ------------------- */}

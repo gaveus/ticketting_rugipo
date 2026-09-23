@@ -293,15 +293,20 @@ router.get('/badges', async (req, res) => {
  * year or custom range (defaults to the last 7 days) — and the trend deltas
  * compare the chosen window with the equal-length window before it.
  */
+/** Safe query — one flaky database call must never take the whole dashboard down. */
+async function safe(fn, fallback) {
+  try { return await fn(); } catch (e) { console.error('[overview] section failed:', e?.message || e); return fallback; }
+}
+
 router.get('/overview', async (req, res) => {
   const scope = deskScope(req.user); // seniors see only their desk's numbers
   const stage = (st) => db.get(`SELECT COUNT(*)::int AS n FROM tickets WHERE status = ? AND ${scope.sql}`, st, ...scope.params);
   const [open, inProgress, waiting, escalated, resolvedToday, unassigned] = await Promise.all([
     stage('open'), stage('in_progress'), stage('waiting_student'), stage('escalated'),
-    db.get(`SELECT COUNT(*)::int AS n FROM tickets WHERE status IN ('resolved','closed')
-       AND updated_at >= date_trunc('day', now()) AND ${scope.sql}`, ...scope.params),
-    db.get(`SELECT COUNT(*)::int AS n FROM tickets WHERE status = 'open' AND assigned_staff_id IS NULL AND ${scope.sql}`, ...scope.params),
-  ]);
+    safe(() => db.get(`SELECT COUNT(*)::int AS n FROM tickets WHERE status IN ('resolved','closed')
+       AND updated_at >= date_trunc('day', now()) AND ${scope.sql}`, ...scope.params), { n: 0 }),
+    safe(() => db.get(`SELECT COUNT(*)::int AS n FROM tickets WHERE status = 'open' AND assigned_staff_id IS NULL AND ${scope.sql}`, ...scope.params), { n: 0 }),
+  ].map((p) => p.catch((e) => { console.error('[overview] count failed:', e?.message || e); return { n: 0 }; })));
 
   // Which window are we charting? Same grammar as the Reports page.
   const q = req.query || {};
@@ -330,14 +335,14 @@ router.get('/overview', async (req, res) => {
   const bucketOrder = grain === 'hour' ? "date_trunc('hour', created_at)"
     : grain === 'month' ? "date_trunc('month', created_at)"
     : "date_trunc('day', created_at)";
-  const createdRows = await db.all(`SELECT ${bucket} AS bucket, COUNT(*)::int AS n FROM tickets
-     WHERE ${seriesWhere} AND ${scope.sql} GROUP BY 1, ${bucketOrder} ORDER BY ${bucketOrder}`, ...scope.params, ...sp);
-  const resolvedRows = await db.all(`SELECT ${bucket} AS bucket, COUNT(*)::int AS n FROM tickets
+  const createdRows = await safe(() => db.all(`SELECT ${bucket} AS bucket, COUNT(*)::int AS n FROM tickets
+     WHERE ${seriesWhere} AND ${scope.sql} GROUP BY 1, ${bucketOrder} ORDER BY ${bucketOrder}`, ...scope.params, ...sp), []);
+  const resolvedRows = await safe(() => db.all(`SELECT ${bucket} AS bucket, COUNT(*)::int AS n FROM tickets
      WHERE status IN ('resolved','closed') AND resolved_at IS NOT NULL AND ${seriesWhere} AND ${scope.sql}
-     GROUP BY 1, ${bucketOrder} ORDER BY ${bucketOrder}`, ...scope.params, ...sp);
-  const escalatedRows = await db.all(`SELECT ${bucket} AS bucket, COUNT(*)::int AS n FROM ticket_status_history h
+     GROUP BY 1, ${bucketOrder} ORDER BY ${bucketOrder}`, ...scope.params, ...sp), []);
+  const escalatedRows = await safe(() => db.all(`SELECT ${bucket} AS bucket, COUNT(*)::int AS n FROM ticket_status_history h
      WHERE h.new_status = 'escalated' AND ${seriesWhere}
-     GROUP BY 1, ${bucketOrder.replace(/created_at/g, 'h.created_at')} ORDER BY ${bucketOrder.replace(/created_at/g, 'h.created_at')}`, ...sp);
+     GROUP BY 1, ${bucketOrder.replace(/created_at/g, 'h.created_at')} ORDER BY ${bucketOrder.replace(/created_at/g, 'h.created_at')}`, ...sp), []);
 
   // Merge the three measures into one series (fill missing buckets with 0).
   const buckets = [];
@@ -391,36 +396,36 @@ router.get('/overview', async (req, res) => {
     createdPrev: prev.created, resolvedPrev: prev.resolved, escalatedPrev: prev.escalated,
   };
 
-  const catRows = await db.all(`
+  const catRows = await safe(() => db.all(`
     SELECT c.name, COUNT(t.id)::int AS n FROM ticket_categories c
     LEFT JOIN tickets t ON t.category_id = c.id AND ${scope.sql}
-    GROUP BY c.name ORDER BY n DESC`, ...scope.params);
+    GROUP BY c.name ORDER BY n DESC`, ...scope.params), []);
   const catTotal = catRows.reduce((a, c) => a + c.n, 0) || 1;
   const categories = catRows.filter((c) => c.n > 0).slice(0, 6)
     .map((c) => ({ name: c.name, count: c.n, pct: Math.round((c.n / catTotal) * 100) }));
 
-  const recent = (await db.all(`SELECT t.id, t.ticket_number, t.student_name, t.matric_no, t.status,
+  const recent = await safe(() => db.all(`SELECT t.id, t.ticket_number, t.student_name, t.matric_no, t.status,
       t.created_at, i.name AS category, u.full_name AS assigned
     FROM tickets t
     LEFT JOIN ticket_categories c ON c.id = t.category_id
     LEFT JOIN ticket_issue_types i ON i.id = t.issue_type_id
     LEFT JOIN users u ON u.id = t.assigned_staff_id
     WHERE ${scope.sql}
-    ORDER BY t.created_at DESC LIMIT 5`, ...scope.params));
+    ORDER BY t.created_at DESC LIMIT 5`, ...scope.params), []);
 
-  const activity = await db.all(`SELECT actor_name, action, entity_type, entity_id, metadata, created_at
-    FROM audit_logs ORDER BY created_at DESC LIMIT 6`);
+  const activity = await safe(() => db.all(`SELECT actor_name, action, entity_type, entity_id, metadata, created_at
+    FROM audit_logs ORDER BY created_at DESC LIMIT 6`), []);
 
-  const unreadRow = await db.get(`SELECT COUNT(*)::int AS n FROM contact_messages
-    WHERE closed_at IS NULL AND status = 'new'`);
+  const unreadRow = await safe(() => db.get(`SELECT COUNT(*)::int AS n FROM contact_messages
+    WHERE closed_at IS NULL AND status = 'new'`), { n: 0 });
 
   res.json({
     period: { label },
     counts: {
-      open: open.n, inProgress: inProgress.n, waiting: waiting.n,
-      escalated: escalated.n, resolvedToday: resolvedToday.n, unassigned: unassigned.n,
+      open: open?.n ?? 0, inProgress: inProgress?.n ?? 0, waiting: waiting?.n ?? 0,
+      escalated: escalated?.n ?? 0, resolvedToday: resolvedToday?.n ?? 0, unassigned: unassigned?.n ?? 0,
     },
-    trends, days, categories, recent, activity, unread: unreadRow.n,
+    trends, days, categories, recent, activity, unread: unreadRow?.n ?? 0,
   });
 });
 
@@ -644,7 +649,7 @@ router.post('/tickets/:id/status', async (req, res) => {
   // belongs to the desk seniors).
   const leavingEscalated = t.status === 'escalated' && next !== 'escalated';
   if (leavingEscalated && req.user.role !== 'senior') {
-    return res.status(403).json({ error: 'Resolving an escalated complaint belongs to the Senior Engineers. You can still reply to the student and add internal notes.' });
+    return res.status(403).json({ error: 'Resolving an escalated complaint belongs to the specialist engineers — Portal Support or Payment Gateway. You can still reply to the student and add internal notes.' });
   }
   // Escalation REQUIRES a reason (§20).
   if (next === 'escalated' && !(note && note.trim().length >= 5)) {
@@ -690,7 +695,7 @@ router.post('/tickets/:id/status', async (req, res) => {
       queueEmail({
         ticketId: t.id, to: a.email, kind: 'escalation',
         subject: `⬆ ${specLabel} complaint ${t.ticket_number} needs your review`,
-        body: `A ${specLabel.toLowerCase()} complaint has been escalated and routed to you.\n\nTicket: ${t.ticket_number} (${t.category} — ${t.issue})\nStudent: ${t.student_name} (${t.matric_no})\nEscalated by: ${req.user.full_name} (${req.user.staff_no || 'no staff ID'})\nReason: ${note}\n\nOpen the Senior Engineer dashboard to review it.`,
+        body: `A ${specLabel.toLowerCase()} payment/portal complaint has been escalated and routed to you.\n\nTicket: ${t.ticket_number} (${t.category} — ${t.issue})\nStudent: ${t.student_name} (${t.matric_no})\nEscalated by: ${req.user.full_name} (${req.user.staff_no || 'no staff ID'})\nReason: ${note}\n\nOpen your dashboard to review it.`,
       });
     }
     // No email to the student here — escalation is an internal step; they see
@@ -920,7 +925,7 @@ router.post('/admin/staff', requireAdmin, async (req, res) => {
   const exists = await db.get('SELECT id FROM users WHERE email = ?', String(email).trim().toLowerCase());
   if (exists) return res.status(409).json({ error: 'An account with this email already exists' });
   const roleLabel = role === 'senior'
-    ? (specialty === 'payment' ? 'Payment Gateway Provider' : 'Senior Engineer')
+    ? (specialty === 'payment' ? 'Payment Gateway Provider' : 'Portal Support Engineer')
     : 'ICT Support Staff';
   const info = await db.run(`INSERT INTO users (role, full_name, email, password_hash, staff_no, gender, phone, specialty, must_change_password)
      VALUES (?, ?, ?, ?, ?, ?, ?, ?, 1)`, role, String(fullName).trim().slice(0, 120), String(email).trim().toLowerCase(),
@@ -1016,15 +1021,29 @@ router.post('/admin/staff/:id/active', requireAdmin, async (req, res) => {
 router.post('/admin/staff/:id/reset-password', requireAdmin, async (req, res) => {
   const target = await db.get('SELECT * FROM users WHERE id = ?', req.params.id);
   if (!target) return res.status(404).json({ error: 'Account not found' });
-  const password = String(req.body?.password || '');
-  if (password.length < 8) return res.status(400).json({ error: 'Password must be at least 8 characters' });
-  if (!/[A-Za-z]/.test(password) || !/[0-9]/.test(password)) {
-    return res.status(400).json({ error: 'Password must contain letters and numbers' });
+  // One click → back to the shared temporary password "password". The portal
+  // forces them to choose their own at next sign-in, so the temporary value
+  // never lasts. A custom typed password is still allowed (kept for flexibility).
+  const typed = String(req.body?.password || '').trim();
+  let password = 'password';
+  if (typed) {
+    if (typed.length < 8) return res.status(400).json({ error: 'Password must be at least 8 characters' });
+    if (!/[A-Za-z]/.test(typed) || !/[0-9]/.test(typed)) {
+      return res.status(400).json({ error: 'Password must contain letters and numbers' });
+    }
+    password = typed;
   }
-  await db.run('UPDATE users SET password_hash = ?, must_change_password = 0 WHERE id = ?',
+  await db.run('UPDATE users SET password_hash = ?, must_change_password = 1 WHERE id = ?',
     bcrypt.hashSync(password, 12), target.id);
   audit(req, 'staff.reset-password', target.id, { email: target.email });
-  res.json({ ok: true });
+  // Tell them — otherwise they think their account is broken.
+  queueEmail({
+    to: target.email,
+    kind: 'staff-password-reset',
+    subject: 'Your RUGIPO ICT Support password was reset',
+    body: `Hello ${target.full_name},\n\nYour sign-in password for the RUGIPO ICT Support portal was reset by the Super ICT Support.\n\nSign in here: ${process.env.PUBLIC_BASE_URL || ''}/admin\nEmail: ${target.email}\nTemporary password: ${password}\n\nThe portal will ask you to choose your own password immediately after signing in.\n\nIf you did not expect this, contact the Super ICT Support right away.\n\n— RUGIPO ICT Support, Rufus Giwa Polytechnic, Owo`,
+  });
+  res.json({ ok: true, temporary: password });
 });
 
 /* --------------------------- admin: audit log --------------------------- */

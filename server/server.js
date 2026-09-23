@@ -40,6 +40,20 @@ app.use(cors({
 
 app.use(express.json({ limit: '64kb' }));
 
+// Production security headers (§26). Students' browsers get the guarantees;
+// nothing here leaks server internals.
+app.use((_req, res, next) => {
+  res.setHeader('X-Content-Type-Options', 'nosniff');
+  res.setHeader('Referrer-Policy', 'strict-origin-when-cross-origin');
+  res.setHeader('X-Frame-Options', 'SAMEORIGIN');
+  res.setHeader('Permissions-Policy', 'camera=(), microphone=(), geolocation=()');
+  // HSTS only means something over HTTPS; harmless locally, vital in production.
+  if (process.env.PUBLIC_BASE_URL || process.env.VERCEL) {
+    res.setHeader('Strict-Transport-Security', 'max-age=15552000; includeSubDomains');
+  }
+  next();
+});
+
 // Lightweight per-IP rate limit for auth-sensitive endpoints.
 const hits = new Map();
 function rateLimit(max, windowMs) {
@@ -83,8 +97,21 @@ app.use((err, req, res, next) => {
   if (err && err.code === 'LIMIT_FILE_SIZE') {
     return res.status(400).json({ error: 'File too large (max 5 MB)' });
   }
-  console.error('[error]', req.method, req.originalUrl, err);
-  res.status(500).json({ error: 'Something went wrong. Please try again.' });
+  if (err && err.code === 'LIMIT_FILE_COUNT') {
+    return res.status(400).json({ error: 'Too many files — attach up to 5 at a time.' });
+  }
+  if (err && err.type === 'entity.parse.failed') {
+    return res.status(400).json({ error: 'The request could not be read. Please try again.' });
+  }
+  // Structured server-side log (§23): full detail for developers here — and
+  // NEVER any of it in the response body a student sees.
+  console.error(JSON.stringify({
+    at: new Date().toISOString(), kind: 'api_error',
+    method: req.method, path: (req.originalUrl || '').slice(0, 120),
+    message: String(err?.message || err).slice(0, 300),
+    stack: err?.stack ? String(err.stack).split('\n').slice(0, 4).join(' | ') : undefined,
+  }));
+  res.status(500).json({ error: 'Something went wrong while processing your request. Please try again. If the problem continues, contact ICT Support.' });
 });
 
 const _envPort = parseInt(process.env.PORT, 10);

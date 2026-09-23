@@ -68,7 +68,7 @@ export default function AdminOverview() {
   // Quiet refresh every minute so the numbers stay honest without a reload.
   useEffect(() => { const t = setInterval(load, 60_000); return () => clearInterval(t); }, [range, pickDay, pickMonth, pickYear, pickWhich]);
 
-  const roleLabel = user?.role === 'admin' ? 'Super ICT Support' : user?.role === 'senior' ? 'Senior Engineer' : 'ICT Support Officer';
+  const roleLabel = user?.role === 'admin' ? 'Super ICT Support' : user?.role === 'senior' ? (user?.specialty === 'payment' ? 'Payment Gateway Provider' : 'Portal Support Engineer') : 'ICT Support Officer';
   const c = data?.counts;
   const t = data?.trends || {};
 
@@ -76,13 +76,13 @@ export default function AdminOverview() {
     { n: c?.open, label: 'Open', icon: Ticket, to: '/admin/tickets?status=open', tone: 'ov-card--open', hint: 'waiting for the first look', trend: t.created, invert: true },
     { n: c?.inProgress, label: 'In Progress', icon: Hourglass, to: '/admin/tickets?status=in_progress', tone: 'ov-card--progress', hint: 'officers are on these now' },
     { n: c?.waiting, label: 'Waiting for Student', icon: MessageCircle, to: '/admin/tickets?status=waiting_student', tone: 'ov-card--waiting', hint: 'we asked, they have not answered' },
-    { n: c?.escalated, label: 'Escalated', icon: ArrowUp, to: isSuper ? '/admin/tickets?status=escalated' : '/admin/escalations', tone: 'ov-card--escalated', hint: 'with the Senior Engineers', trend: t.escalated, invert: true },
+    { n: c?.escalated, label: 'Escalated', icon: ArrowUp, to: isSuper ? '/admin/tickets?status=escalated' : '/admin/escalations', tone: 'ov-card--escalated', hint: 'with the specialist engineers', trend: t.escalated, invert: true },
     { n: c?.resolvedToday, label: 'Resolved Today', icon: CheckCircle2, to: '/admin/tickets?status=resolved', tone: 'ov-card--resolved', hint: 'every student has been told' },
   ];
 
   const quickActions = [
     [Ticket, 'View All Complaints', 'Every complaint, every stage', '/admin/tickets'],
-    [ArrowUp, isSuper ? 'With Senior Engineers' : 'My Escalations', 'Complaints the seniors are handling', isSuper ? '/admin/tickets?status=escalated' : '/admin/escalations'],
+    [ArrowUp, isSuper ? 'With Specialist Engineers' : 'My Escalations', 'Complaints the engineers are handling', isSuper ? '/admin/tickets?status=escalated' : '/admin/escalations'],
     [MessageCircle, 'Student Questions', 'Live chats waiting for a reply', '/admin/inbox'],
     [BarChart3, 'Reports', 'Figures for any day, month or year', '/admin/analytics'],
   ];

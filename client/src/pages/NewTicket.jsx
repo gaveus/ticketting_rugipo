@@ -19,6 +19,7 @@ export default function NewTicket() {
   const [error, setError] = useState('');
   const [busy, setBusy] = useState(false);
   const [result, setResult] = useState(null);
+  const [submitError, setSubmitError] = useState('');
   const topRef = useRef(null);
 
   const [details, setDetails] = useState(EMPTY);
@@ -144,7 +145,11 @@ export default function NewTicket() {
       setResult(created);
       setStep(5);
     } catch (e) {
-      setError(e.message);
+      // §7 — never pretend success: the panel below states the truth and
+      // offers a retry. Nothing was created (the server is the only source
+      // of tracking IDs), so the student simply tries again.
+      setSubmitError(e.message);
+      try { topRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' }); } catch { /* older browsers */ }
     } finally { setBusy(false); }
   }
 
@@ -461,6 +466,27 @@ export default function NewTicket() {
               </button>
             </div>
           </>
+        )}
+
+        {/* ------------------ submission failure (§7) ------------------ */}
+        {step === 4 && submitError && (
+          <div className="card mt" style={{ borderLeft: '4px solid #b3261e', textAlign: 'center', padding: '22px 18px' }}>
+            <img src="/rugipo-logo.png" alt="" style={{ width: 46, height: 46, objectFit: 'contain', margin: '0 auto 8px', display: 'block' }} />
+            <h3 className="panel-title" style={{ justifyContent: 'center' }}>We Couldn't Submit Your Ticket</h3>
+            <p className="muted" style={{ fontSize: '.9rem' }}>
+              Your ticket could not be submitted at this time. {submitError}
+            </p>
+            <p className="muted" style={{ fontSize: '.84rem' }}>
+              Please check your internet connection and try again. If the problem continues, contact ICT Support —
+              your details below are still filled in, nothing was lost.
+            </p>
+            <div className="row" style={{ justifyContent: 'center' }}>
+              <button type="button" className="btn btn--navy" disabled={busy} onClick={submit}>
+                {busy ? 'Submitting…' : 'Try Again'}
+              </button>
+              <a className="btn btn--outline" href="/contact">Contact ICT Support</a>
+            </div>
+          </div>
         )}
 
         {/* ---------------------- nav buttons ---------------------- */}

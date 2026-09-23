@@ -188,7 +188,7 @@ export default function StaffAnalytics() {
       ['Solved or closed', resolved],
       ['Still open', data.totals?.stillOpen ?? 0],
       ['Waiting for first look', data.totals?.unattended ?? 0],
-      ['With Senior Engineers now', data.totals?.nowEscalated ?? 0],
+      ['With Specialist Engineers now', data.totals?.nowEscalated ?? 0],
       ['Ever escalated', escTotal],
       ['Escalated — payment desk', escPayment],
       ['Escalated — portal desk', escPortal],

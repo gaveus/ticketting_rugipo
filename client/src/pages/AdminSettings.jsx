@@ -159,7 +159,7 @@ function Accounts({ readOnly = false } = {}) {
   const [confirmSuper, setConfirmSuper] = useState(null); // { id, email, input }
   const [menuOpen, setMenuOpen] = useState(null); // staff id with open action menu
   const [confirmRole, setConfirmRole] = useState(null); // { staff, role, specialty } before a role change
-  const [resetPw, setResetPw] = useState(null); // { staff, password } for password reset
+  const [resetPw, setResetPw] = useState(null); // { staff, done } confirm-then-reset
 
   function load() { api('/staff/admin/staff').then((d) => setStaffList(d.staff)).catch((e) => setMsg({ ok: '', err: e.message })); }
   useEffect(load, []);
@@ -175,7 +175,7 @@ function Accounts({ readOnly = false } = {}) {
 
   /** Role + desk in Heritage's words. */
   const roleBadge = (s) => s.role === 'admin' ? 'Super ICT Support'
-    : s.role === 'senior' ? (s.specialty === 'payment' ? 'Payment Gateway Provider' : 'Senior Engineer')
+    : s.role === 'senior' ? (s.specialty === 'payment' ? 'Payment Gateway Provider' : 'Portal Support Engineer')
     : 'ICT Support Staff';
 
   // Heritage: the form takes the whole page, reached through a Create button,
@@ -259,12 +259,12 @@ function Accounts({ readOnly = false } = {}) {
                                 onClick={() => { setMenuOpen(null); setConfirmRole({ staff: s, role: s.role === 'senior' ? 'staff' : 'senior', specialty: s.specialty || 'portal' }); }}>
                                 {s.role === 'senior'
                                   ? <><Reply size={13} style={{ verticalAlign: '-2px', marginRight: 5 }} />Return to ICT Support</>
-                                  : <><ArrowUp size={13} style={{ verticalAlign: '-2px', marginRight: 5 }} />Make Senior Engineer</>}
+                                  : <><ArrowUp size={13} style={{ verticalAlign: '-2px', marginRight: 5 }} />Make Portal Support Engineer</>}
                               </button>
                               {s.role === 'senior' && (
                                 <button role="menuitem" type="button"
                                   onClick={() => { setMenuOpen(null); act(`/staff/admin/staff/${s.id}/specialty`, { specialty: s.specialty === 'payment' ? 'portal' : 'payment' }); }}>
-                                  <ArrowLeftRight size={13} style={{ verticalAlign: '-2px', marginRight: 5 }} />Switch to {s.specialty === 'payment' ? 'Senior Engineer (portal desk)' : 'Payment Gateway Provider'}
+                                  <ArrowLeftRight size={13} style={{ verticalAlign: '-2px', marginRight: 5 }} />Switch to {s.specialty === 'payment' ? 'Portal Support Engineer' : 'Payment Gateway Provider'}
                                 </button>
                               )}
                               <button role="menuitem" type="button"
@@ -272,7 +272,7 @@ function Accounts({ readOnly = false } = {}) {
                                 <Star size={13} style={{ verticalAlign: '-2px', marginRight: 5 }} />Grant Super ICT Support
                               </button>
                               <button role="menuitem" type="button"
-                                onClick={() => { setMenuOpen(null); setResetPw({ staff: s, password: '' }); }}>
+                                onClick={() => { setMenuOpen(null); setResetPw({ staff: s, done: false }); }}>
                                 <KeyRound size={13} style={{ verticalAlign: '-2px', marginRight: 5 }} />Reset their password
                               </button>
                               <button role="menuitem" type="button" className="menu-list__danger"
@@ -296,7 +296,7 @@ function Accounts({ readOnly = false } = {}) {
 
       {confirmRole && (
         <div className="card mt" style={{ borderLeft: '4px solid var(--green)' }}>
-          <strong style={{ display: 'flex', alignItems: 'center', gap: 6 }}>{confirmRole.role === 'senior' ? <><ArrowUp size={16} /> Make Senior Engineer</> : <><Undo2 size={16} /> Return to ICT Support</>}</strong>
+          <strong style={{ display: 'flex', alignItems: 'center', gap: 6 }}>{confirmRole.role === 'senior' ? <><ArrowUp size={16} /> Make Portal Support Engineer</> : <><Undo2 size={16} /> Return to ICT Support</>}</strong>
           <p className="muted" style={{ fontSize: '.88rem' }}>
             {confirmRole.role === 'senior'
               ? `${confirmRole.staff.full_name} will work escalated complaints. Choose the desk — escalations are routed by it.`
@@ -306,7 +306,7 @@ function Accounts({ readOnly = false } = {}) {
             <label className="field"><span>Which complaints will they handle?</span>
               <select value={confirmRole.specialty}
                 onChange={(e) => setConfirmRole({ ...confirmRole, specialty: e.target.value })}>
-                <option value="portal">Senior Engineer — portal complaints (login, registration, results, CBT, admission…)</option>
+                <option value="portal">Portal Support Engineer — portal complaints (login, registration, results, CBT, admission…)</option>
                 <option value="payment">Payment Gateway Provider — Appiawave debits, expired links, payment receipts…</option>
               </select>
             </label>
@@ -329,24 +329,35 @@ function Accounts({ readOnly = false } = {}) {
       {resetPw && (
         <div className="card mt" style={{ borderLeft: '4px solid var(--gold)' }}>
           <strong style={{ display: 'flex', alignItems: 'center', gap: 6 }}><KeyRound size={16} /> Reset password for {resetPw.staff.full_name}</strong>
-          <p className="muted" style={{ fontSize: '.88rem' }}>
-            Choose a new password for <strong>{resetPw.staff.email}</strong>. Share it privately —
-            they can change it from My Profile after signing in.
-          </p>
-          <div className="row">
-            <input type="text" placeholder="New password (8+ chars, letters &amp; numbers)" value={resetPw.password}
-              onChange={(e) => setResetPw({ ...resetPw, password: e.target.value })} style={{ maxWidth: 320 }} />
-            <button className="btn btn--navy btn--sm" disabled={resetPw.password.length < 8}
-              onClick={async () => {
-                if (await act(`/staff/admin/staff/${resetPw.staff.id}/reset-password`, { password: resetPw.password })) {
-                  setMsg({ ok: `Password reset for ${resetPw.staff.email}. They can sign in with the new one now.`, err: '' });
-                  setResetPw(null);
-                }
-              }}>
-              Set password
-            </button>
-            <button className="btn btn--outline btn--sm" onClick={() => setResetPw(null)}>Cancel</button>
-          </div>
+          {resetPw.done ? (
+            <>
+              <div className="notice notice--ok mt">
+                Done. <strong>{resetPw.staff.email}</strong> now signs in with the temporary password
+                <strong> password</strong> — they've been emailed, and the portal makes them choose their own
+                the moment they sign in.
+              </div>
+              <div className="row"><button className="btn btn--outline btn--sm" onClick={() => setResetPw(null)}>Close</button></div>
+            </>
+          ) : (
+            <>
+              <p className="muted" style={{ fontSize: '.88rem' }}>
+                Their password goes back to the shared temporary password <strong>password</strong>,
+                and they are emailed automatically. The portal will make them choose their own
+                password immediately after signing in — so the temporary one works once.
+              </p>
+              <div className="row">
+                <button className="btn btn--navy btn--sm"
+                  onClick={async () => {
+                    if (await act(`/staff/admin/staff/${resetPw.staff.id}/reset-password`, {})) {
+                      setResetPw({ ...resetPw, done: true });
+                    }
+                  }}>
+                  Reset to “password”
+                </button>
+                <button className="btn btn--outline btn--sm" onClick={() => setResetPw(null)}>Cancel</button>
+              </div>
+            </>
+          )}
         </div>
       )}
 
@@ -377,7 +388,7 @@ function Accounts({ readOnly = false } = {}) {
 /** Heritage's three staff groups, in the words staff actually use. */
 const CATEGORIES = [
   ['ict-support', 'ICT Support Staff', 'Attends to student complaints from the front: replies, checks evidence, escalates what needs a senior.'],
-  ['senior-engineer', 'Senior Engineer', 'Resolves escalated portal complaints — login, course registration, results, printing, CBT, admission.'],
+  ['senior-engineer', 'Portal Support Engineer', 'Resolves escalated portal complaints — login, course registration, results, printing, CBT, admission.'],
   ['payment-provider', 'Payment Gateway Provider', 'Resolves escalated payment complaints — money debited by Appiawave without reflecting, expired links, payment receipts.'],
 ];
 

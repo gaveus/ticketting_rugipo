@@ -170,7 +170,7 @@ export default function AdminLayout() {
   if (!user) return <Gate />;
   if (!['staff', 'senior', 'admin'].includes(user.role)) return <Gate />;
 
-  const roleLabel = user.role === 'admin' ? 'Super ICT Support' : user.role === 'senior' ? (user.specialty === 'payment' ? 'Payment Gateway Provider' : 'Senior Engineer') : 'ICT Support Staff';
+  const roleLabel = user.role === 'admin' ? 'Super ICT Support' : user.role === 'senior' ? (user.specialty === 'payment' ? 'Payment Gateway Provider' : 'Portal Support Engineer') : 'ICT Support Staff';
   const displayName = user.fullName || user.email || 'Staff';
   const initials = displayName.split(/\s+/).map((w) => w[0]).slice(0, 2).join('').toUpperCase();
 
@@ -207,8 +207,7 @@ export default function AdminLayout() {
           {user.staffNo && <small className="admin-who__meta">Staff ID: {user.staffNo}</small>}
           {user.role === 'senior' && user.specialty && (
             <small className="admin-who__meta">{user.specialty === 'payment' ? 'Payment complaints' : 'Portal complaints'}</small>
-          )}
-        </Link>
+          )}        </Link>
 
         <nav className="admin-sidebar__nav" aria-label="Portal">
           {navItems.map((it) => (
