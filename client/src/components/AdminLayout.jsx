@@ -177,10 +177,13 @@ export default function AdminLayout() {
       ],
     }] : []),
     {
-      key: 'settings', label: 'My account', collapsible: false,
+      key: 'settings', label: 'Settings', collapsible: false,
       items: [{
-        to: '/admin/profile', search: '',
-        label: 'My account', icon: Settings, end: true,
+        // The administration page itself — ICT Support Staff see it read-only.
+        // `end: true` keeps it from highlighting alongside "Staff accounts",
+        // which shares this page under ?tab=accounts.
+        to: '/admin/settings', search: '',
+        label: 'Settings', icon: Settings, end: true,
       }],
     },
   ], [isSenior, isAdmin, badges]);
@@ -338,7 +341,7 @@ export default function AdminLayout() {
             <Link to="/admin/escalations" className={location.pathname === '/admin/escalations' ? 'is-active' : ''}>
               <span className="bn-ic"><ArrowUp size={16} /></span>Escalated</Link>
           )}
-          <Link to="/admin/profile" className={location.pathname === '/admin/profile' ? 'is-active' : ''}>
+          <Link to="/admin/settings" className={location.pathname === '/admin/settings' ? 'is-active' : ''}>
             <span className="bn-ic"><Settings size={16} /></span>Settings</Link>
         </nav>
       </div>
