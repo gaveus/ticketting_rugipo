@@ -27,7 +27,7 @@ export default function AdminSettings() {
       <>
         <h2 className="section__title">Administration</h2>
         <div className="notice notice--info">
-          You are viewing this in read-only mode — only Super ICT Support can make changes here.
+          You can view everything on this page, but making changes is reserved for the Super ICT Support. If something here needs correcting, let them know.
         </div>
         <div className="chips mb" style={{ flexDirection: 'row', display: 'flex', gap: 8, flexWrap: 'wrap' }}>
           {TABS.map(([k, label, Ic]) => (

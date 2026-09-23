@@ -36,7 +36,7 @@ export default function AdminProfile() {
       const d = await api('/auth/me', { method: 'POST', body: JSON.stringify(details) });
       setMsg({ ok: 'Profile saved.', err: '' });
       setMe((m) => ({ ...m, ...d.user }));
-      // The server's presentUser() is the truth for profileComplete — patch
+      // The server's presentUser() is the truth for profileComplete — sync
       // with the FULL returned user so the gate can never show stale state.
       refreshSessionUser(d.user);
     } catch (err) { setMsg({ ok: '', err: err.message }); }
@@ -108,9 +108,11 @@ export default function AdminProfile() {
       <p className="section__sub">Your details, your photo and your password — colleagues see your name beside every complaint you handle.</p>
 
       {blocked && (
-        <div className="notice notice--info">
-          <strong>Finish setting up your account</strong> — choose your own password and add your details below.
-          {blocked && ' You can work on complaints once this is done.'}
+        <div className="notice notice--err" role="alert">
+          <strong>Action needed before you can start</strong> — {needsPassword && !needsDetails && 'choose your own password below.'}
+          {needsDetails && !needsPassword && 'add your gender and phone number below, then save.'}
+          {needsPassword && needsDetails && 'set your own password and add your gender and phone number below, then save.'}
+          {' '}Complaint work stays locked until this is done.
         </div>
       )}
       {msg.ok && <div className="notice notice--ok">{msg.ok}</div>}

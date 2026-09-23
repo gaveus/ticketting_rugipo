@@ -177,10 +177,10 @@ export default function AdminLayout() {
       ],
     }] : []),
     {
-      key: 'settings', label: 'Settings', collapsible: false,
+      key: 'settings', label: 'My account', collapsible: false,
       items: [{
-        to: isAdmin ? '/admin/settings' : '/admin/profile', search: isAdmin ? '?tab=accounts' : '',
-        label: 'Settings', icon: Settings, end: !isAdmin,
+        to: '/admin/profile', search: '',
+        label: 'My account', icon: Settings, end: true,
       }],
     },
   ], [isSenior, isAdmin, badges]);
@@ -363,7 +363,7 @@ function ProfileGate({ user }) {
             <h1 className="section__title" style={{ marginTop: 10 }}>Welcome, {(user.fullName || 'there').split(/\s+/)[0]}</h1>
             <p className="section__sub">
               {todo
-                ? <>One last step before you start: please {todo}.</>
+                ? <>Your account needs one more step before it is ready: please {todo}.</>
                 : <>Finishing up…</>}
             </p>
             <Link className="btn btn--navy" to="/admin/profile">Set up my profile →</Link>

@@ -20,6 +20,7 @@ function presentUser(u) {
   return {
     id: u.id, role: u.role, fullName: u.full_name,
     email: u.email, staffNo: u.staff_no, gender: u.gender,
+    phone: u.phone || '',
     // Full URL, not the storage key: <img> tags cannot send the Authorization
     // header, so the client must load the photo straight from Cloudinary.
     profileImage: u.profile_image ? (cloudinaryUrl(u.profile_image) || u.profile_image) : null,
