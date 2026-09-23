@@ -81,6 +81,27 @@ router.post('/change-password', requireAuth, async (req, res) => {
   res.json({ ok: true });
 });
 
+/**
+ * Idle auto-lock unlock — the screen locked after inactivity and the officer
+ * must re-prove it is really them with their CURRENT password. Same brute
+ * force protection as sign-in, and it never reveals whether an account exists.
+ */
+router.post('/unlock', requireAuth, async (req, res) => {
+  const password = String(req.body?.password || '');
+  const a = attempts.get(req.user.email);
+  if (a && a.lockedUntil > Date.now()) {
+    return res.status(429).json({ error: 'Too many failed attempts. Try again in a few minutes.' });
+  }
+  const u = await db.get('SELECT * FROM users WHERE id = ? AND active = 1', req.user.id);
+  if (!u || !bcrypt.compareSync(password, u.password_hash)) {
+    const n = (a?.count || 0) + 1;
+    attempts.set(req.user.email, { count: n, lockedUntil: n >= 5 ? Date.now() + 15 * 60_000 : 0 });
+    return res.status(401).json({ error: 'That password is not correct' });
+  }
+  attempts.delete(req.user.email);
+  res.json({ ok: true, user: presentUser(u) });
+});
+
 /** Update own profile details + photo (any signed-in staff). */
 router.post('/me', requireAuth, async (req, res) => {
   const phone = req.body?.phone != null ? String(req.body.phone).trim().slice(0, 30) : null;

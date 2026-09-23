@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { Link, Outlet, useLocation, useNavigate } from 'react-router-dom';
 import { createClient } from '@supabase/supabase-js';
 import { useAuth, api, fmtDateTime } from '../auth.jsx';
+import IdleLock from './IdleLock.jsx';
 import { LayoutDashboard, Ticket, Mail, MessageCircle, ArrowUp, ArrowRight, ArrowLeft, TrendingUp, User, ShieldCheck, School, ClipboardList, Megaphone, Settings, Inbox } from 'lucide-react';
 
 // Supabase Realtime — when configured (production), new student questions
@@ -274,6 +275,10 @@ export default function AdminLayout() {
         <main className="admin-content">
           <Outlet />
         </main>
+
+        {/* Idle auto-lock — hides everything after 15 quiet minutes until the
+            officer re-enters their password. */}
+        <IdleLock />
 
         {/* Mobile bottom nav — the five things staff do most. */}
         <nav className="admin-bottomnav" aria-label="Quick menu">

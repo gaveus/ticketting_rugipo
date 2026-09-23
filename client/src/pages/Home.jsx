@@ -156,20 +156,24 @@ export default function Home() {
             <div className="portal-panel">
               <div className="portal-panel__top">
                 <span className="portal-panel__art" aria-hidden="true">
-                  {/* Hand-coded laptop illustration — support chat on screen */}
-                  <svg viewBox="0 0 96 66" role="img" aria-label="Laptop with a support chat bubble">
-                    <rect x="58" y="0" width="32" height="20" rx="6" fill="#f7c600" />
-                    <path d="M66 20 l-4 8 11 -8 z" fill="#f7c600" />
-                    <circle cx="67" cy="10" r="2.3" fill="#0b3d1f" />
-                    <circle cx="74" cy="10" r="2.3" fill="#0b3d1f" />
-                    <circle cx="81" cy="10" r="2.3" fill="#0b3d1f" />
-                    <rect x="18" y="8" width="54" height="38" rx="6" fill="#0b3d1f" />
-                    <rect x="22" y="12" width="46" height="30" rx="3" fill="#ffffff" />
-                    <rect x="27" y="17" width="22" height="3.5" rx="1.75" fill="#cfe3d6" />
-                    <rect x="27" y="24" width="32" height="3.5" rx="1.75" fill="#cfe3d6" />
-                    <rect x="27" y="31" width="16" height="3.5" rx="1.75" fill="#f7c600" />
-                    <path d="M12 48 H78 L84 60 Q85 63 81 63 H9 Q5 63 6 60 Z" fill="#0b3d1f" />
-                    <rect x="38" y="52" width="14" height="3.4" rx="1.7" fill="#3f7a58" />
+                  {/* Hand-coded laptop illustration — chat bubble rides IN FRONT of the screen, top-right */}
+                  <svg viewBox="0 0 100 70" role="img" aria-label="Laptop with a support chat bubble">
+                    {/* laptop screen */}
+                    <rect x="20" y="12" width="54" height="38" rx="6" fill="#0b3d1f" />
+                    <rect x="24" y="16" width="46" height="30" rx="3" fill="#ffffff" />
+                    {/* conversation on screen: student question left, ICT reply right */}
+                    <rect x="28" y="21" width="18" height="6" rx="3" fill="#dcebe2" />
+                    <rect x="28" y="30" width="24" height="6" rx="3" fill="#dcebe2" />
+                    <rect x="46" y="39" width="20" height="6" rx="3" fill="#f7c600" />
+                    {/* laptop base */}
+                    <path d="M14 52 H80 L86 63 Q87 66 83 66 H11 Q7 66 8 63 Z" fill="#0b3d1f" />
+                    <rect x="38" y="56" width="18" height="3.2" rx="1.6" fill="#3f7a58" />
+                    {/* chat bubble — drawn last so it sits IN FRONT, overlapping the screen's top-right */}
+                    <path d="M74 24 l-7 9 12 -4 z" fill="#1d7a4a" />
+                    <rect x="62" y="2" width="34" height="24" rx="10" fill="#1d7a4a" />
+                    <circle cx="72" cy="14" r="2.6" fill="#ffffff" />
+                    <circle cx="79" cy="14" r="2.6" fill="#ffffff" />
+                    <circle cx="86" cy="14" r="2.6" fill="#ffffff" />
                   </svg>
                 </span>
                 <div>
