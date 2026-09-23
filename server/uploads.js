@@ -12,8 +12,23 @@ const path = require('path');
 const fs = require('fs');
 const crypto = require('crypto');
 
-const UPLOAD_DIR = path.join(__dirname, 'uploads');
-if (!fs.existsSync(UPLOAD_DIR)) fs.mkdirSync(UPLOAD_DIR, { recursive: true });
+// Staging directory for incoming files before they are moved to Cloudinary.
+// On hosts with a read-only deployment filesystem (Vercel), the app directory
+// cannot be written to — /tmp is the only writable location there. An unwritable
+// directory must never crash the boot: file uploads fail gracefully instead.
+function resolveUploadDir() {
+  const appDir = path.join(__dirname, 'uploads');
+  try {
+    fs.mkdirSync(appDir, { recursive: true });
+    fs.accessSync(appDir, fs.constants.W_OK);
+    return appDir;
+  } catch {
+    const tmpDir = path.join(require('os').tmpdir(), 'rugipo-uploads');
+    try { fs.mkdirSync(tmpDir, { recursive: true }); } catch { /* /tmp should exist */ }
+    return tmpDir;
+  }
+}
+const UPLOAD_DIR = resolveUploadDir();
 
 const MAX_SIZE = 5 * 1024 * 1024; // 5 MB per file
 
