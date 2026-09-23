@@ -10,12 +10,6 @@ const SUPA_URL = import.meta.env.VITE_SUPABASE_URL || '';
 const SUPA_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY || '';
 const supaBadges = SUPA_URL && SUPA_KEY ? createClient(SUPA_URL, SUPA_KEY, { auth: { persistSession: false } }) : null;
 
-const Caret = () => (
-  <svg className="caret" width="10" height="10" viewBox="0 0 10 10" aria-hidden="true">
-    <path d="M1 3l4 4 4-4" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
-  </svg>
-);
-
 const KIND_ICONS = { new_ticket: Ticket, student_reply: MessageCircle, escalation: ArrowUp, inbox: Mail };
 
 /**
@@ -115,8 +109,7 @@ function BellIcon() {
 }
 
 /**
- * Staff portal layout: grouped sidebar with collapsible sections + top bar.
- * Sections: Main → Complaints (collapsible) → Reports → Administration (Super, collapsible) → Settings.
+ * Staff portal layout: a single flat sidebar menu + top bar.
  * Mobile: sidebar becomes a slide-in drawer with a bottom quick nav.
  */
 export default function AdminLayout() {
@@ -124,7 +117,6 @@ export default function AdminLayout() {
   const location = useLocation();
   const nav = useNavigate();
   const [drawer, setDrawer] = useState(false);
-  const [open, setOpen] = useState({});
   const [badges, setBadges] = useState(null);
   const [search, setSearch] = useState('');
 
@@ -149,44 +141,22 @@ export default function AdminLayout() {
   const isSenior = ['senior', 'admin'].includes(user?.role);
   const isAdmin = user?.role === 'admin';
 
-  const groups = React.useMemo(() => [
-    {
-      key: 'main', label: 'Main', collapsible: false,
-      items: [{ to: '/admin/dashboard', search: '', label: 'Overview', icon: LayoutDashboard, end: true }],
-    },
-    {
-      key: 'complaints', label: 'Complaints', collapsible: true,
-      items: [
-        { to: '/admin/tickets', search: '', label: 'All complaints', icon: Ticket, count: badges?.open },
-        { to: '/admin/inbox', search: '', label: 'Student questions', icon: Mail, count: badges?.unread },
-        ...(isSenior ? [{ to: '/admin/escalations', search: '', label: 'With Senior Engineers', icon: ArrowUp, count: badges?.escalated }] : []),
-      ],
-    },
-    {
-      key: 'insights', label: 'Insights', collapsible: false,
-      items: [{ to: '/admin/analytics', search: '', label: 'Reports', icon: TrendingUp }],
-    },
-    ...(isSenior ? [{
-      key: 'administration', label: 'Administration', collapsible: true,
-      items: [
-        { to: '/admin/settings', search: '?tab=accounts', label: 'Staff accounts', icon: User },
-        { to: '/admin/audit', search: '', label: 'Activity log', icon: ShieldCheck },
-        { to: '/admin/settings', search: '?tab=masterdata', label: 'Faculties & departments', icon: School },
-        { to: '/admin/settings', search: '?tab=catalogue', label: 'Support services', icon: ClipboardList },
-        { to: '/admin/settings', search: '?tab=updates', label: 'Homepage updates', icon: Megaphone },
-      ],
-    }] : []),
-    {
-      key: 'settings', label: 'Settings', collapsible: false,
-      items: [{
-        // The administration page itself — ICT Support Staff see it read-only.
-        // `end: true` keeps it from highlighting alongside "Staff accounts",
-        // which shares this page under ?tab=accounts.
-        to: '/admin/settings', search: '',
-        label: 'Settings', icon: Settings, end: true,
-      }],
-    },
-  ], [isSenior, isAdmin, badges]);
+  // One flat menu — Heritage: the navigation list is short, keep it together.
+  const navItems = React.useMemo(() => [
+    { to: '/admin/dashboard', search: '', label: 'Overview', icon: LayoutDashboard, end: true },
+    { to: '/admin/tickets', search: '', label: 'All complaints', icon: Ticket, count: badges?.open },
+    { to: '/admin/inbox', search: '', label: 'Student questions', icon: Mail, count: badges?.unread },
+    ...(isSenior ? [{ to: '/admin/escalations', search: '', label: 'Escalations', icon: ArrowUp, count: badges?.escalated }] : []),
+    { to: '/admin/analytics', search: '', label: 'Reports', icon: TrendingUp },
+    ...(isSenior ? [
+      { to: '/admin/settings', search: '?tab=accounts', label: 'Staff accounts', icon: User },
+      { to: '/admin/audit', search: '', label: 'Activity log', icon: ShieldCheck },
+      { to: '/admin/settings', search: '?tab=masterdata', label: 'Faculties & departments', icon: School },
+      { to: '/admin/settings', search: '?tab=catalogue', label: 'Support services', icon: ClipboardList },
+      { to: '/admin/settings', search: '?tab=updates', label: 'Homepage updates', icon: Megaphone },
+    ] : []),
+    { to: '/admin/settings', search: '', label: 'Settings', icon: Settings, end: true },
+  ], [isSenior, badges]);
 
   /** Active = same path AND same tab query (Administration tabs share one path). */
   function isActive(it) {
@@ -196,16 +166,13 @@ export default function AdminLayout() {
     return true;
   }
 
-  // Auto-open the section the user is working in (hook must run unconditionally).
-  useEffect(() => {
-    const activeGroup = groups.find((g) => g.items.some(isActive));
-    if (activeGroup?.collapsible) setOpen((o) => (o[activeGroup.key] ? o : { ...o, [activeGroup.key]: true }));
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [location.pathname, location.search, groups]);
-
   if (!ready) return <div className="loading">Loading…</div>;
   if (!user) return <Gate />;
   if (!['staff', 'senior', 'admin'].includes(user.role)) return <Gate />;
+
+  const roleLabel = user.role === 'admin' ? 'Super ICT Support' : user.role === 'senior' ? (user.specialty === 'payment' ? 'Payment Gateway Provider' : 'Senior Engineer') : 'ICT Support Staff';
+  const displayName = user.fullName || user.email || 'Staff';
+  const initials = displayName.split(/\s+/).map((w) => w[0]).slice(0, 2).join('').toUpperCase();
 
   // First-login gate: new staff must set their own password + details before
   // they can work on complaints. They can still visit My Profile.
@@ -215,12 +182,8 @@ export default function AdminLayout() {
     return <ProfileGate user={user} />;
   }
 
-  const roleLabel = user.role === 'admin' ? 'Super ICT Support' : user.role === 'senior' ? 'Senior Engineer' : 'ICT Support Staff';
-  const displayName = user.fullName || user.email || 'Staff';
-  const initials = displayName.split(/\s+/).map((w) => w[0]).slice(0, 2).join('').toUpperCase();
-
   // Top-bar title = active item's label.
-  const activeItem = groups.flatMap((g) => g.items).find(isActive);
+  const activeItem = navItems.find(isActive);
 
   return (
     <div className="admin-shell">
@@ -248,29 +211,13 @@ export default function AdminLayout() {
         </Link>
 
         <nav className="admin-sidebar__nav" aria-label="Portal">
-          {groups.map((g) => (
-            <div key={g.key} className={`admin-nav-group ${!g.collapsible || open[g.key] || g.items.some(isActive) ? 'is-open' : ''}`}>
-              {g.collapsible ? (
-                <button type="button" className="admin-nav-group__label"
-                  aria-expanded={!!open[g.key]}
-                  onClick={() => setOpen((o) => ({ ...o, [g.key]: !o[g.key] }))}>
-                  <span>{g.label}</span>
-                  <Caret />
-                </button>
-              ) : (
-                <div className="admin-nav-group__label admin-nav-group__label--static"><span>{g.label}</span></div>
-              )}
-              <div className="admin-nav-group__items">
-                {g.items.map((it) => (
-                  <Link key={it.label + it.search} to={it.to + it.search}
-                    className={`admin-sidebar__link ${isActive(it) ? 'is-active' : ''}`}>
-                    <span className="admin-sidebar__icon" aria-hidden="true"><it.icon size={16} strokeWidth={2} /></span>
-                    {it.label}
-                    {Number.isInteger(it.count) && it.count > 0 && <span className="admin-badge" aria-label={`${it.count}`}>{it.count > 99 ? '99+' : it.count}</span>}
-                  </Link>
-                ))}
-              </div>
-            </div>
+          {navItems.map((it) => (
+            <Link key={it.label + it.search} to={it.to + it.search}
+              className={`admin-sidebar__link ${isActive(it) ? 'is-active' : ''}`}>
+              <span className="admin-sidebar__icon" aria-hidden="true"><it.icon size={16} strokeWidth={2} /></span>
+              {it.label}
+              {Number.isInteger(it.count) && it.count > 0 && <span className="admin-badge" aria-label={`${it.count}`}>{it.count > 99 ? '99+' : it.count}</span>}
+            </Link>
           ))}
         </nav>
 

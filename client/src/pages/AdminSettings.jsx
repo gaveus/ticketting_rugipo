@@ -155,7 +155,7 @@ function Accounts({ readOnly = false } = {}) {
   const { user } = useAuth();
   const [staffList, setStaffList] = useState([]);
   const [msg, setMsg] = useState({ ok: '', err: '' });
-  const [form, setForm] = useState({ fullName: '', email: '', password: '', role: 'staff', staffNo: '', gender: '', phone: '', specialty: 'portal' });
+  const [view, setView] = useState('list'); // 'list' → 'create' (breadcrumb flow)
   const [confirmSuper, setConfirmSuper] = useState(null); // { id, email, input }
   const [menuOpen, setMenuOpen] = useState(null); // staff id with open action menu
   const [confirmRole, setConfirmRole] = useState(null); // { staff, role, specialty } before a role change
@@ -163,17 +163,6 @@ function Accounts({ readOnly = false } = {}) {
 
   function load() { api('/staff/admin/staff').then((d) => setStaffList(d.staff)).catch((e) => setMsg({ ok: '', err: e.message })); }
   useEffect(load, []);
-
-  async function createAccount(e) {
-    e.preventDefault();
-    setMsg({ ok: '', err: '' });
-    try {
-      const d = await api('/staff/admin/staff', { method: 'POST', body: JSON.stringify(form) });
-      setMsg({ ok: `Account created for ${form.fullName} (${form.role === 'senior' ? `Senior Engineer — ${form.specialty === 'payment' ? 'Payment' : 'Portal'} complaints` : 'ICT Support Staff'}). Share the password securely.`, err: '' });
-      setForm({ fullName: '', email: '', password: '', role: 'staff', staffNo: '', gender: '', phone: '', specialty: 'portal' });
-      load();
-    } catch (err) { setMsg({ ok: '', err: err.message }); }
-  }
 
   async function act(path, body = {}) {
     setMsg({ ok: '', err: '' });
@@ -184,14 +173,32 @@ function Accounts({ readOnly = false } = {}) {
     } catch (err) { setMsg({ ok: '', err: err.message }); return false; }
   }
 
-  const roleBadge = (r) => r === 'admin' ? 'Super ICT Support' : r === 'senior' ? 'Senior Engineer' : 'ICT Support Staff';
+  /** Role + desk in Heritage's words. */
+  const roleBadge = (s) => s.role === 'admin' ? 'Super ICT Support'
+    : s.role === 'senior' ? (s.specialty === 'payment' ? 'Payment Gateway Provider' : 'Senior Engineer')
+    : 'ICT Support Staff';
+
+  // Heritage: the form takes the whole page, reached through a Create button,
+  // with a breadcrumb to come back.
+  if (view === 'create' && !readOnly) {
+    return (
+      <AccountCreate
+        onCancel={() => setView('list')}
+        onDone={(name) => {
+          setView('list');
+          setMsg({ ok: `Account created for ${name}. They sign in with the temporary password “password” — the portal asks them to choose their own the first time.`, err: '' });
+          load();
+        }}
+      />
+    );
+  }
 
   if (readOnly) {
     return (
       <div className="card">
-        <strong>All accounts ({staffList.length})</strong>
+        <strong>All staff accounts ({staffList.length})</strong>
         <div className="notice notice--info" style={{ margin: '8px 0' }}>
-          Read-only — only Super ICT Support can create or change accounts.
+          You can view everyone here, but creating or changing accounts is reserved for the Super ICT Support.
         </div>
         <div className="table-wrap mt">
           <table>
@@ -202,11 +209,7 @@ function Accounts({ readOnly = false } = {}) {
                   <td><strong>{s.full_name}</strong><br />
                     <span className="muted" style={{ fontSize: '.78rem' }}>{s.email}{s.staff_no ? ` · ${s.staff_no}` : ''}</span></td>
                   <td><span className={`badge ${s.role === 'admin' ? 'badge--resolved' : s.role === 'senior' ? 'badge--in_progress' : 'badge--assigned'}`}>
-                    {roleBadge(s.role)}</span>{s.role === 'senior' && s.specialty && (
-                      <span className="muted" style={{ fontSize: '.74rem', display: 'block', marginTop: 2 }}>
-                        handles {s.specialty === 'payment' ? 'payment' : 'portal'} complaints
-                      </span>
-                    )}</td>
+                    {roleBadge(s)}</span></td>
                   <td>{s.active ? <span className="badge badge--resolved">Active</span> : <span className="badge badge--rejected">Disabled</span>}</td>
                 </tr>
               ))}
@@ -222,9 +225,11 @@ function Accounts({ readOnly = false } = {}) {
       {msg.ok && <div className="notice notice--ok">{msg.ok}</div>}
       {msg.err && <div className="notice notice--err">{msg.err}</div>}
 
-      <div className="grid" style={{ gridTemplateColumns: 'minmax(0,1.2fr) minmax(0,1fr)' }}>
-        <div className="card">
-          <strong>All accounts ({staffList.length})</strong>
+      <div className="row row--between" style={{ marginBottom: 12 }}>
+        <strong style={{ fontSize: '1.05rem' }}>All staff accounts ({staffList.length})</strong>
+        <button type="button" className="btn btn--navy" onClick={() => setView('create')}>Create account</button>
+      </div>
+      <div className="card">
           <div className="table-wrap mt">
             <table>
               <thead><tr><th>Name</th><th>Role</th><th>Status</th><th>Actions</th></tr></thead>
@@ -234,11 +239,7 @@ function Accounts({ readOnly = false } = {}) {
                     <td><strong>{s.full_name}</strong>{s.role === 'admin' && s.id !== user.id ? <Star size={12} style={{ verticalAlign: '-1px', marginLeft: 4, color: '#d97706' }} aria-label="Super ICT" /> : ''}<br />
                       <span className="muted" style={{ fontSize: '.78rem' }}>{s.email}{s.staff_no ? ` · ${s.staff_no}` : ''}</span></td>
                     <td><span className={`badge ${s.role === 'admin' ? 'badge--resolved' : s.role === 'senior' ? 'badge--in_progress' : 'badge--assigned'}`}>
-                      {roleBadge(s.role)}</span>{s.role === 'senior' && s.specialty && (
-                        <span className="muted" style={{ fontSize: '.74rem', display: 'block', marginTop: 2 }}>
-                          handles {s.specialty === 'payment' ? 'payment' : 'portal'} complaints
-                        </span>
-                      )}</td>
+                      {roleBadge(s)}</span></td>
                     <td>{s.active ? <span className="badge badge--resolved">Active</span> : <span className="badge badge--rejected">Disabled</span>}</td>
                     <td>
                       {s.id === user.id ? (
@@ -263,7 +264,7 @@ function Accounts({ readOnly = false } = {}) {
                               {s.role === 'senior' && (
                                 <button role="menuitem" type="button"
                                   onClick={() => { setMenuOpen(null); act(`/staff/admin/staff/${s.id}/specialty`, { specialty: s.specialty === 'payment' ? 'portal' : 'payment' }); }}>
-                                  <ArrowLeftRight size={13} style={{ verticalAlign: '-2px', marginRight: 5 }} />Move to {s.specialty === 'payment' ? 'portal' : 'payment'} desk
+                                  <ArrowLeftRight size={13} style={{ verticalAlign: '-2px', marginRight: 5 }} />Switch to {s.specialty === 'payment' ? 'Senior Engineer (portal desk)' : 'Payment Gateway Provider'}
                                 </button>
                               )}
                               <button role="menuitem" type="button"
@@ -293,56 +294,6 @@ function Accounts({ readOnly = false } = {}) {
           </p>
         </div>
 
-        <div className="card">
-          <strong>Create an account</strong>
-          <p className="muted" style={{ fontSize: '.85rem' }}>
-            ICT Support handles tickets; Senior Engineers handle escalations. There is no public sign-up.
-          </p>
-          <form onSubmit={createAccount}>
-            <label className="field"><span>Role</span>
-              <select value={form.role} onChange={(e) => setForm({ ...form, role: e.target.value })}>
-                <option value="staff">ICT Support Staff</option>
-                <option value="senior">Senior Engineer</option>
-              </select>
-            </label>
-            {form.role === 'senior' && (
-              <label className="field"><span>What will they handle?</span>
-                <select value={form.specialty} onChange={(e) => setForm({ ...form, specialty: e.target.value })}>
-                  <option value="portal">Portal complaints — login, registration, results, receipt/printing errors (no payment issue), CBT, admission…</option>
-                  <option value="payment">Payment complaints — debited but not reflecting, expired links, receipts showing how the debit happened…</option>
-                </select>
-              </label>
-            )}
-            <label className="field"><span>Full name</span>
-              <input value={form.fullName} required onChange={(e) => setForm({ ...form, fullName: e.target.value })} />
-            </label>
-            <div className="form-grid">
-              <label className="field"><span>Staff ID</span>
-                <input value={form.staffNo} placeholder="ICT/RGP/0xx" onChange={(e) => setForm({ ...form, staffNo: e.target.value })} />
-              </label>
-              <label className="field"><span>Phone</span>
-                <input value={form.phone} placeholder="080…" onChange={(e) => setForm({ ...form, phone: e.target.value })} />
-              </label>
-            </div>
-            <label className="field"><span>Gender</span>
-              <select value={form.gender} onChange={(e) => setForm({ ...form, gender: e.target.value })}>
-                <option value="">Select gender…</option>
-                <option value="male">Male</option>
-                <option value="female">Female</option>
-              </select>
-            </label>
-            <label className="field"><span>Email</span>
-              <input type="email" value={form.email} required onChange={(e) => setForm({ ...form, email: e.target.value })} />
-            </label>
-            <label className="field"><span>Password <small>(min 8 chars — share securely)</small></span>
-              <input type="password" value={form.password} minLength={8} required autoComplete="new-password"
-                onChange={(e) => setForm({ ...form, password: e.target.value })} />
-            </label>
-            <button className="btn btn--navy">Create account</button>
-          </form>
-        </div>
-      </div>
-
       {confirmRole && (
         <div className="card mt" style={{ borderLeft: '4px solid var(--green)' }}>
           <strong style={{ display: 'flex', alignItems: 'center', gap: 6 }}>{confirmRole.role === 'senior' ? <><ArrowUp size={16} /> Make Senior Engineer</> : <><Undo2 size={16} /> Return to ICT Support</>}</strong>
@@ -355,8 +306,8 @@ function Accounts({ readOnly = false } = {}) {
             <label className="field"><span>Which complaints will they handle?</span>
               <select value={confirmRole.specialty}
                 onChange={(e) => setConfirmRole({ ...confirmRole, specialty: e.target.value })}>
-                <option value="portal">Portal complaints — login, registration, results, receipt/printing errors (no payment issue), CBT, admission…</option>
-                <option value="payment">Payment complaints — debited but not reflecting, expired links, receipts showing how the debit happened…</option>
+                <option value="portal">Senior Engineer — portal complaints (login, registration, results, CBT, admission…)</option>
+                <option value="payment">Payment Gateway Provider — Appiawave debits, expired links, payment receipts…</option>
               </select>
             </label>
           )}
@@ -418,6 +369,97 @@ function Accounts({ readOnly = false } = {}) {
         </div>
       )}
     </>
+  );
+}
+
+/* --------------------- create an account (breadcrumb flow) --------------------- */
+
+/** Heritage's three staff groups, in the words staff actually use. */
+const CATEGORIES = [
+  ['ict-support', 'ICT Support Staff', 'Attends to student complaints from the front: replies, checks evidence, escalates what needs a senior.'],
+  ['senior-engineer', 'Senior Engineer', 'Resolves escalated portal complaints — login, course registration, results, printing, CBT, admission.'],
+  ['payment-provider', 'Payment Gateway Provider', 'Resolves escalated payment complaints — money debited by Appiawave without reflecting, expired links, payment receipts.'],
+];
+
+function AccountCreate({ onDone, onCancel }) {
+  const [form, setForm] = useState({ category: 'ict-support', fullName: '', email: '', staffNo: '', gender: '', phone: '' });
+  const [err, setErr] = useState('');
+  const [busy, setBusy] = useState(false);
+  const cat = CATEGORIES.find(([v]) => v === form.category);
+
+  async function submit(e) {
+    e.preventDefault();
+    setErr(''); setBusy(true);
+    try {
+      await api('/staff/admin/staff', { method: 'POST', body: JSON.stringify(form) });
+      onDone(form.fullName.trim());
+    } catch (e2) { setErr(e2.message); setBusy(false); }
+  }
+
+  return (
+    <div className="card">
+      <nav aria-label="Breadcrumb" style={{ marginBottom: 12, fontSize: '.9rem' }}>
+        <button type="button" onClick={onCancel}
+          style={{ background: 'none', border: 'none', padding: 0, cursor: 'pointer', font: 'inherit', color: 'var(--navy, #123)', textDecoration: 'underline' }}>
+          Staff accounts
+        </button>
+        <span style={{ margin: '0 8px', color: 'var(--muted, #667)' }}>›</span>
+        <strong>Create account</strong>
+      </nav>
+
+      <h3 className="panel-title">New staff account</h3>
+      <p className="panel-sub">
+        Accounts are created here only — there is no public sign-up. The new staff member
+        receives an email with their sign-in details.
+      </p>
+
+      <form onSubmit={submit} style={{ display: 'grid', gap: 12, maxWidth: 640 }}>
+        <label className="field"><span>Account type</span>
+          <select value={form.category} onChange={(e) => setForm({ ...form, category: e.target.value })}>
+            {CATEGORIES.map(([v, label]) => <option key={v} value={v}>{label}</option>)}
+          </select>
+        </label>
+        {cat && <div className="notice notice--info" style={{ marginTop: -6 }}>{cat[2]}</div>}
+
+        <label className="field"><span>Full name</span>
+          <input value={form.fullName} required placeholder="e.g. Samuel Ojo"
+            onChange={(e) => setForm({ ...form, fullName: e.target.value })} />
+        </label>
+        <label className="field"><span>Email <small>(their sign-in — details are mailed here)</small></span>
+          <input type="email" value={form.email} required placeholder="name@rugipo.edu.ng"
+            onChange={(e) => setForm({ ...form, email: e.target.value })} />
+        </label>
+        <div className="form-grid">
+          <label className="field"><span>Staff ID <small>(optional)</small></span>
+            <input value={form.staffNo} placeholder="ICT/RGP/0xx"
+              onChange={(e) => setForm({ ...form, staffNo: e.target.value })} />
+          </label>
+          <label className="field"><span>Phone <small>(optional)</small></span>
+            <input value={form.phone} placeholder="080…"
+              onChange={(e) => setForm({ ...form, phone: e.target.value })} />
+          </label>
+        </div>
+        <label className="field"><span>Gender <small>(optional — they can add it themselves)</small></span>
+          <select value={form.gender} onChange={(e) => setForm({ ...form, gender: e.target.value })}>
+            <option value="">Select gender…</option>
+            <option value="male">Male</option>
+            <option value="female">Female</option>
+          </select>
+        </label>
+
+        <div className="notice notice--info">
+          They will sign in with the temporary password <strong>password</strong>. The portal
+          makes them choose their own password and add their details before they can work on
+          anything — so nothing sensitive ever travels in plain text for long.
+        </div>
+
+        {err && <div className="notice notice--err">{err}</div>}
+        <div className="row">
+          <button className="btn btn--navy" disabled={busy}>{busy ? 'Creating…' : 'Create account'}</button>
+          <button type="button" className="btn btn--outline" onClick={onCancel}>Cancel</button>
+        </div>
+      </form>
+    </div>
   );
 }
 

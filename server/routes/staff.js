@@ -890,24 +890,38 @@ router.get('/admin/staff', requireStaff, async (_req, res) => {
  * role must be 'staff' (ICT Support) or 'senior' (Senior Engineer); creating
  * another 'admin' happens only through the explicit promote endpoint.
  */
+/** Heritage's three staff categories → the role/specialty the portal runs on. */
+const CATEGORY_MAP = {
+  'ict-support': { role: 'staff', specialty: null },
+  'senior-engineer': { role: 'senior', specialty: 'portal' },
+  'payment-provider': { role: 'senior', specialty: 'payment' },
+};
+
 router.post('/admin/staff', requireAdmin, async (req, res) => {
-  const { fullName, email, password, role, staffNo, gender, phone } = req.body || {};
-  if (!fullName || !email || !password || !['staff', 'senior'].includes(role)) {
-    return res.status(400).json({ error: 'Name, email, password and role (ICT Support or Senior Engineer) are required' });
+  const { fullName, email, staffNo, gender, phone } = req.body || {};
+  const category = CATEGORY_MAP[String(req.body?.category || '')] || null;
+  // The legacy role+specialty shape still works so nothing else breaks.
+  const legacyRole = String(req.body?.role || '');
+  const legacySpecialty = String(req.body?.specialty || '').toLowerCase();
+  const role = category ? category.role : legacyRole;
+  const specialty = category ? category.specialty
+    : (role === 'senior' && ['payment', 'portal'].includes(legacySpecialty) ? legacySpecialty : null);
+  // Default password is literally "password" — the portal forces a change at
+  // first sign-in, so a shared starter password is safe.
+  const password = String(req.body?.password || '').trim() || 'password';
+  if (!fullName || !email || !['staff', 'senior'].includes(role)) {
+    return res.status(400).json({ error: 'Name, email and role are required' });
   }
-  if (String(password).length < 8) return res.status(400).json({ error: 'Password must be at least 8 characters' });
+  if (password.length < 8) return res.status(400).json({ error: 'Password must be at least 8 characters' });
   if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(String(email))) return res.status(400).json({ error: 'Enter a valid email address' });
   if (gender && !['male', 'female'].includes(String(gender).toLowerCase())) {
     return res.status(400).json({ error: 'Gender must be male or female' });
   }
   const exists = await db.get('SELECT id FROM users WHERE email = ?', String(email).trim().toLowerCase());
   if (exists) return res.status(409).json({ error: 'An account with this email already exists' });
-  // Speciality only applies to Senior Engineers: which complaints they handle.
-  const specialtyRaw = String(req.body?.specialty || '').toLowerCase();
-  const specialty = role === 'senior' && ['payment', 'portal'].includes(specialtyRaw) ? specialtyRaw : null;
-  if (role === 'senior' && !specialty) {
-    return res.status(400).json({ error: 'Choose what the Senior Engineer will handle: payment or portal complaints' });
-  }
+  const roleLabel = role === 'senior'
+    ? (specialty === 'payment' ? 'Payment Gateway Provider' : 'Senior Engineer')
+    : 'ICT Support Staff';
   const info = await db.run(`INSERT INTO users (role, full_name, email, password_hash, staff_no, gender, phone, specialty, must_change_password)
      VALUES (?, ?, ?, ?, ?, ?, ?, ?, 1)`, role, String(fullName).trim().slice(0, 120), String(email).trim().toLowerCase(),
     bcrypt.hashSync(String(password), 12),
@@ -921,7 +935,7 @@ router.post('/admin/staff', requireAdmin, async (req, res) => {
     to: String(email).trim().toLowerCase(),
     kind: 'staff-welcome',
     subject: `Your RUGIPO ICT Support account is ready`,
-    body: `Hello ${String(fullName).trim()},\n\nAn account has been created for you on the RUGIPO ICT Support portal.\n\nRole: ${role === 'senior' ? `Senior Engineer${specialty === 'payment' ? ' — Payment complaints' : ' — Portal complaints'}` : 'ICT Support Staff'}${staffNo ? `\nStaff ID: ${staffNo}` : ''}\nSign in here: ${process.env.PUBLIC_BASE_URL || ''}/admin\nEmail: ${String(email).trim().toLowerCase()}\nTemporary password: (shared with you securely)\n\nIMPORTANT: The first time you sign in, the system will ask you to choose your own password and add your profile details. You must complete this before you can work on complaints.\n\n— RUGIPO ICT Support, Rufus Giwa Polytechnic, Owo`,
+    body: `Hello ${String(fullName).trim()},\n\nAn account has been created for you on the RUGIPO ICT Support portal.\n\nRole: ${roleLabel}${staffNo ? `\nStaff ID: ${staffNo}` : ''}\nSign in here: ${process.env.PUBLIC_BASE_URL || ''}/admin\nEmail: ${String(email).trim().toLowerCase()}\nTemporary password: ${password}\n\nIMPORTANT: The first time you sign in, the system will ask you to choose your own password and add your profile details. You must complete this before you can work on complaints.\n\n— RUGIPO ICT Support, Rufus Giwa Polytechnic, Owo`,
   });
   res.json({ ok: true, id: info.lastInsertRowid });
 });
