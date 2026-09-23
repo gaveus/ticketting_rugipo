@@ -26,14 +26,28 @@ async function requireAuth(req, res, next) {
   const header = req.headers.authorization || '';
   const token = header.startsWith('Bearer ') ? header.slice(7) : null;
   if (!token) return res.status(401).json({ error: 'Authentication required' });
+
+  // Step 1 — verify the token on its own. A failure here is genuinely an
+  // auth problem (tampered/expired/malformed) and may end the session.
+  let payload;
   try {
-    const payload = jwt.verify(token, JWT_SECRET);
+    payload = jwt.verify(token, JWT_SECRET);
+  } catch {
+    return res.status(401).json({ error: 'Invalid or expired session. Please sign in again.' });
+  }
+
+  // Step 2 — load the user. A failure here is a DATABASE problem (cold
+  // connection, timeout). It must NOT answer 401: the client wipes the stored
+  // login on any 401, so a transient blip would sign real staff out. Say 503
+  // and let them retry.
+  try {
     const user = await db.get('SELECT * FROM users WHERE id = ? AND active = 1', payload.sub);
     if (!user) return res.status(401).json({ error: 'Account disabled or missing' });
     req.user = user;
     next();
-  } catch {
-    return res.status(401).json({ error: 'Invalid or expired session. Please sign in again.' });
+  } catch (e) {
+    console.error('[auth] user lookup failed (database, not auth):', e?.message || e);
+    return res.status(503).json({ error: 'The service is busy right now — please try again in a moment.' });
   }
 }
 

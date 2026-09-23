@@ -29,9 +29,13 @@ const pool = new Pool({
   connectionString: DATABASE_URL,
   ssl: { rejectUnauthorized: false },
   // Aiven free tier allows ~20-25 connections TOTAL per service. Keep each
-  // server instance small so a dev copy + production copy can coexist.
-  max: Number(process.env.PG_POOL_MAX) || 5,
-  idleTimeoutMillis: 30_000,
+  // instance small so a dev copy + production copy can coexist. Serverless
+  // hosts (Vercel) spawn many short-lived instances — keep the per-instance
+  // cap tight so they never collectively exhaust the database.
+  max: Number(process.env.PG_POOL_MAX) || 2,
+  idleTimeoutMillis: 15_000,          // close dead sockets before reuse
+  connectionTimeoutMillis: 10_000,    // fail fast into the 503 retry path
+  keepAlive: true,
 });
 
 const als = new AsyncLocalStorage();
