@@ -256,12 +256,13 @@ export default function StaffAnalytics() {
 
   return (
     <section className="section container container--wide">
-      <div className="panel-head">
+      <div className="pg-head">
         <div>
-          <h2 className="section__title" style={{ margin: 0 }}>Reports</h2>
-          <p className="panel-sub">Pick a day, a month, a whole year or your own range — every figure on this page follows your choice.</p>
+          <span className="pg-head__eyebrow">Figures &amp; exports</span>
+          <h2 className="pg-head__title">Reports</h2>
+          <p className="pg-head__sub">Pick a day, a month, a whole year or your own range — every figure on this page follows your choice.</p>
         </div>
-        <div className="row" style={{ gap: 8, flexWrap: 'wrap' }}>
+        <div className="pg-head__actions">
           <button className={`btn btn--outline btn--sm ${busy ? 'btn--busy' : ''}`} disabled={!!busy} onClick={exportExcel}><Download size={14} style={{ verticalAlign: '-2px', marginRight: 5 }} />Excel</button>
           <button className={`btn btn--outline btn--sm ${busy ? 'btn--busy' : ''}`} disabled={!!busy} onClick={exportPNG}>{busy === 'image' ? 'Building…' : <><ImageIcon size={14} style={{ verticalAlign: '-2px', marginRight: 5 }} />PNG</>}</button>
           <button className={`btn btn--outline btn--sm ${busy ? 'btn--busy' : ''}`} disabled={!!busy} onClick={exportJPG}>{busy === 'image-jpg' ? 'Building…' : <><FileImage size={14} style={{ verticalAlign: '-2px', marginRight: 5 }} />JPG</>}</button>
@@ -269,27 +270,30 @@ export default function StaffAnalytics() {
       </div>
 
       {/* -------------------------- period picker -------------------------- */}
-      <div className="card mb period-bar">
-        <div className="row" style={{ gap: 10, flexWrap: 'wrap', alignItems: 'center' }}>
-          <strong style={{ color: 'var(--green-deep)' }}>Showing:</strong>
-          <select value={mode} onChange={(e) => setMode(e.target.value)} aria-label="Report period">
-            <option value="30d">Last 30 days</option>
-            <option value="day">One day</option>
-            <option value="month">One month</option>
-            <option value="year">One year</option>
-            <option value="range">My own range</option>
-          </select>
-          {mode === 'day' && <input type="date" value={day} onChange={(e) => setDay(e.target.value)} />}
-          {mode === 'month' && <input type="month" value={month} onChange={(e) => setMonth(e.target.value)} />}
-          {mode === 'year' && <input type="number" min="2024" max="2100" value={year} onChange={(e) => setYear(e.target.value)} style={{ width: 110 }} />}
+      <div className="tool-bar" style={{ justifyContent: 'space-between' }}>
+        <div className="seg" role="tablist" aria-label="Report period">
+          {[
+            ['30d', 'Last 30 days'],
+            ['day', 'One day'],
+            ['month', 'One month'],
+            ['year', 'One year'],
+            ['range', 'My own range'],
+          ].map(([k, label]) => (
+            <button key={k} type="button" className={mode === k ? 'is-on' : ''} onClick={() => setMode(k)}>{label}</button>
+          ))}
+        </div>
+        <div className="seg-fields">
+          {mode === 'day' && <input type="date" value={day} onChange={(e) => setDay(e.target.value)} aria-label="Pick the day" />}
+          {mode === 'month' && <input type="month" value={month} onChange={(e) => setMonth(e.target.value)} aria-label="Pick the month" />}
+          {mode === 'year' && <input type="number" min="2024" max="2100" value={year} onChange={(e) => setYear(e.target.value)} style={{ width: 110 }} aria-label="Pick the year" />}
           {mode === 'range' && (
             <>
-              <input type="date" value={from} onChange={(e) => setFrom(e.target.value)} />
+              <input type="date" value={from} onChange={(e) => setFrom(e.target.value)} aria-label="From" />
               <span className="muted">to</span>
-              <input type="date" value={to} onChange={(e) => setTo(e.target.value)} />
+              <input type="date" value={to} onChange={(e) => setTo(e.target.value)} aria-label="To" />
             </>
           )}
-          <span className="badge badge--resolved" style={{ marginLeft: 'auto' }}>{data.period.label}</span>
+          <span className="badge badge--resolved">{data.period.label}</span>
         </div>
       </div>
 

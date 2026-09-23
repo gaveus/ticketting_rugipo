@@ -53,12 +53,13 @@ export default function StaffEscalations() {
 
   return (
     <section className="section container container--wide">
-      <div className="panel-head">
+      <div className="pg-head">
         <div>
-          <h2 className="section__title" style={{ margin: 0 }}>
+          <span className="pg-head__eyebrow">Specialist queue</span>
+          <h2 className="pg-head__title">
             {myDesk === 'payment' ? 'Payment desk' : myDesk === 'portal' ? 'Portal desk' : 'Escalated complaints'}
           </h2>
-          <p className="panel-sub">
+          <p className="pg-head__sub">
             {myDesk
               ? `Complaints ICT Support could not finish are routed to you automatically — you handle ${myDesk === 'payment' ? 'payment' : 'portal'} complaints. Open one to resolve it.`
               : 'Handed over by ICT Support for senior review — open a complaint to resolve it.'}

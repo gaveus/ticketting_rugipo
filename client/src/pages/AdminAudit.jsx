@@ -1,6 +1,7 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
-import { api, useAuth, fmtDateTime } from '../auth.jsx';
+import { api, useAuth, fmtDateTime, fmtDate } from '../auth.jsx';
+import { Ticket, UserPlus, ShieldCheck, Megaphone, CreditCard, MessageCircle, Settings, Search } from 'lucide-react';
 
 const ACTION_LABELS = {
   'ticket.status': 'Complaint stage changed',
@@ -24,6 +25,22 @@ const ACTION_LABELS = {
   'newsletter.broadcast': 'Newsletter sent',
 };
 
+function iconFor(action) {
+  if (action.startsWith('ticket.reply') || action.startsWith('inbox.')) return MessageCircle;
+  if (action.startsWith('payment.')) return CreditCard;
+  if (action.startsWith('staff.')) return UserPlus;
+  if (action.startsWith('announcement.') || action.startsWith('newsletter.')) return Megaphone;
+  if (action.startsWith('masterdata.')) return Settings;
+  if (action.startsWith('ticket.')) return Ticket;
+  return ShieldCheck;
+}
+function toneFor(action) {
+  if (action.startsWith('staff.')) return 'audit-item__ic--staff';
+  if (action.startsWith('payment.')) return 'audit-item__ic--pay';
+  if (action.startsWith('announcement.') || action.startsWith('newsletter.')) return 'audit-item__ic--announce';
+  return '';
+}
+
 /** Audit trail — Super ICT Support only. Every staff action lands here. */
 export default function AdminAudit() {
   const { user } = useAuth();
@@ -46,17 +63,25 @@ export default function AdminAudit() {
     if (ticket) qs.set('ticket', ticket);
     api(`/staff/admin/audit-log?${qs}`).then(setData).catch((e) => setError(e.message));
   }
-  useEffect(() => { if (isSuper) load(); }, [isSuper, filter, ticket]);
+  useEffect(() => { if (isSuper) load(); }, [isSuper, filter, ticket]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  if (!isSuper) return <div className="notice notice--err">Only the Super ICT Support can view the audit trail.</div>;
-  if (error) return <div className="notice notice--err">{error}</div>;
-  if (!data) return (
-    <div className="page-loading" role="status">
-      <span className="page-loading__spinner" aria-hidden="true" />
-      <strong>Please hold on while we fetch your details…</strong>
-      <small>Reading the activity log — who did what, and when.</small>
-    </div>
-  );
+  // Group entries by calendar day (Lagos time) for the timeline's day markers.
+  const days = useMemo(() => {
+    if (!data?.entries?.length) return [];
+    const groups = new Map();
+    for (const e of data.entries) {
+      const key = new Intl.DateTimeFormat('en-CA', { timeZone: 'Africa/Lagos', year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date(e.created_at));
+      if (!groups.has(key)) groups.set(key, []);
+      groups.get(key).push(e);
+    }
+    return [...groups.entries()].map(([day, entries]) => ({
+      day,
+      label: day === new Intl.DateTimeFormat('en-CA', { timeZone: 'Africa/Lagos', year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date())
+        ? 'Today'
+        : fmtDate(entries[0].created_at),
+      entries,
+    }));
+  }, [data]);
 
   const describe = (e) => {
     try {
@@ -70,44 +95,75 @@ export default function AdminAudit() {
     } catch { return e.metadata || ''; }
   };
 
+  if (!isSuper) return <div className="notice notice--err">Only the Super ICT Support can view the audit trail.</div>;
+  if (error) return <div className="notice notice--err">{error}</div>;
+
   return (
     <>
-      <h2 className="section__title">Activity log</h2>
-      <p className="section__sub">
-        Every action taken by every officer — who attended to which complaint, what they changed, and when (Lagos time).
-        Search by ticket number to see one complaint's full story.
-      </p>
+      <div className="pg-head">
+        <div>
+          <span className="pg-head__eyebrow">Who did what</span>
+          <h2 className="pg-head__title">Activity log</h2>
+          <p className="pg-head__sub">
+            Every action taken by every officer — who attended to which complaint, what they changed, and when.
+            Search by ticket number to see one complaint's full story.
+          </p>
+        </div>
+      </div>
 
-      <div className="filters">
+      <div className="tool-bar">
+        <span className="tb-ic" aria-hidden="true"><Search size={16} /></span>
         <input placeholder="Search by ticket number e.g. RGP-2026-A0001…" value={ticket}
-          onChange={(e) => set('ticket', e.target.value)} style={{ minWidth: 240 }} />
-        <select value={filter} onChange={(e) => set('action', e.target.value)}>
+          onChange={(e) => set('ticket', e.target.value)} aria-label="Search by ticket number" />
+        <select value={filter} onChange={(e) => set('action', e.target.value)} aria-label="Filter by action">
           <option value="">All actions</option>
-          {data.actions.map((a) => (
+          {data?.actions.map((a) => (
             <option key={a.action} value={a.action}>{ACTION_LABELS[a.action] || a.action} ({a.n})</option>
           ))}
         </select>
       </div>
 
-      {data.entries.length === 0 && <div className="card"><p className="muted">Nothing here yet — this fills up automatically as officers attend to complaints.</p></div>}
-      {data.entries.length > 0 && (
-        <div className="table-wrap">
-          <table>
-            <thead><tr><th>When (Lagos)</th><th>Officer</th><th>Action</th><th>Complaint</th><th>Detail</th></tr></thead>
-            <tbody>
-              {data.entries.map((e) => (
-                <tr key={e.id}>
-                  <td style={{ whiteSpace: 'nowrap' }}>{fmtDateTime(e.created_at)}</td>
-                  <td><strong>{e.actor_name || 'system'}</strong></td>
-                  <td>{ACTION_LABELS[e.action] || e.action}</td>
-                  <td>{e.ticket_number
-                    ? <><Link to={`/admin/tickets/${e.entity_id}`}>{e.ticket_number}</Link>{e.student_name && <span className="muted" style={{ fontSize: '.78rem' }}> · {e.student_name}</span>}</>
-                    : e.entity_type === 'ticket' ? `#${e.entity_id}` : '—'}</td>
-                  <td className="muted" style={{ fontSize: '.82rem' }}>{describe(e)}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+      {!data && (
+        <div className="page-loading" role="status">
+          <span className="page-loading__spinner" aria-hidden="true" />
+          <strong>Please hold on while we fetch your details…</strong>
+          <small>Reading the activity log — who did what, and when.</small>
+        </div>
+      )}
+
+      {data && data.entries.length === 0 && (
+        <div className="card empty-state">
+          <div className="inbox-empty__art"><ShieldCheck size={28} /></div>
+          <strong>Nothing here yet</strong>
+          <p className="muted" style={{ margin: '4px 0 0' }}>This fills up automatically as officers attend to complaints.</p>
+        </div>
+      )}
+
+      {data && data.entries.length > 0 && (
+        <div className="audit-tl">
+          {days.map((d) => (
+            <div className="audit-day" key={d.day}>
+              <span className="audit-day__label">{d.label}</span>
+              {d.entries.map((e) => {
+                const Ic = iconFor(e.action);
+                return (
+                  <div className="audit-item" key={e.id}>
+                    <span className={`audit-item__ic ${toneFor(e.action)}`} aria-hidden="true"><Ic size={16} /></span>
+                    <div className="audit-item__body">
+                      <div className="audit-item__what">{ACTION_LABELS[e.action] || e.action}{describe(e) && <span className="muted" style={{ fontWeight: 500 }}> — {describe(e)}</span>}</div>
+                      <div className="audit-item__meta">
+                        by <strong>{e.actor_name || 'system'}</strong>
+                        {e.ticket_number
+                          ? <> · <Link to={`/admin/tickets/${e.entity_id}`}>{e.ticket_number}</Link>{e.student_name ? ` · ${e.student_name}` : ''}</>
+                          : e.entity_type === 'ticket' ? ` · complaint #${e.entity_id}` : ''}
+                      </div>
+                    </div>
+                    <span className="audit-item__time">{fmtDateTime(e.created_at)}</span>
+                  </div>
+                );
+              })}
+            </div>
+          ))}
         </div>
       )}
     </>
