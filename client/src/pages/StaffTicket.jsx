@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { ChevronDown, ArrowRight, X, CheckCircle2, ArrowUp, Check, CheckCheck, XCircle, FileText, Paperclip, Mail, Image as ImageIcon } from 'lucide-react';
+import { ChevronDown, ArrowRight, X, CheckCircle2, ArrowUp, Check, CheckCheck, XCircle, FileText, Paperclip, Mail, RotateCcw, Lock, Image as ImageIcon } from 'lucide-react';
 
 /** Plain-language meaning of each stage — shown on the action buttons. */
 const STATUS_EXPLAIN = {
@@ -109,12 +109,15 @@ export default function StaffTicket() {
     </div>
   );
 
-  const { ticket, student, studentHistory, messages, attachments, payment, history, staffList, escalation, allowedTransitions, viewerRole } = data;
+  const { ticket, student, studentHistory, messages, attachments, payment, history, staffList, escalation, staffLog, allowedTransitions, viewerRole } = data;
 
   const canResolve = allowedTransitions.includes('resolved');
   const canEscalate = allowedTransitions.includes('escalated');
   const isEscalated = ticket.status === 'escalated';
   const otherTransitions = allowedTransitions.filter((s) => !['resolved', 'escalated'].includes(s));
+  // Solved/closed/rejected = the record is locked; reopening is the one way back.
+  const isLocked = ['resolved', 'closed', 'rejected'].includes(ticket.status);
+  const canReopen = otherTransitions.some((s) => ['open', 'in_progress'].includes(s));
 
   async function act(path, body, okMsg = 'Done.') {
     setBusy(true); setMsg('');
@@ -137,6 +140,10 @@ export default function StaffTicket() {
     if (actionNote.trim().length < 5) { setMsg('An escalation reason is required (at least 5 characters).'); return; }
     await act(`/staff/tickets/${id}/status`, { status: 'escalated', note: actionNote.trim() },
       'Escalated — the specialist engineers for this desk have been notified by email.');
+  }
+  async function reopen() {
+    await act(`/staff/tickets/${id}/status`, { status: 'open', note: actionNote.trim() || undefined },
+      'Reopened — the complaint is back in the queue and the student has been told by email.');
   }
 
   const staffMsgs = messages.filter((m) => ['staff', 'senior', 'admin'].includes(m.sender_role));
@@ -193,8 +200,14 @@ export default function StaffTicket() {
             <small>For problems beyond first-line — they take it from here</small>
           </button>
         )}
-        <StageMenu allowed={otherTransitions} busy={busy} isEscalated={isEscalated} isSeniorPlus={isSeniorPlus}
+        <StageMenu allowed={otherTransitions.filter((s) => !['open', 'in_progress'].includes(s))} busy={busy} isEscalated={isEscalated} isSeniorPlus={isSeniorPlus}
           onPick={(s) => act(`/staff/tickets/${id}/status`, { status: s }, `Stage changed to ${STATUS_LABELS[s]}`)} />
+        {canReopen && (
+          <button className="btn btn--outline" disabled={busy} onClick={() => { setPanel(panel === 'reopen' ? null : 'reopen'); setActionNote(''); }}>
+            <RotateCcw size={15} style={{ verticalAlign: '-3px', marginRight: 5 }} />Reopen
+            <small>Student came back? Put it back in the queue</small>
+          </button>
+        )}
         {allowedTransitions.length === 0 && !isEscalated && <p className="muted" style={{ margin: 0 }}>This complaint is fully finished — nothing left to do.</p>}
       </div>
 
@@ -226,6 +239,23 @@ export default function StaffTicket() {
           <div className="row mt" style={{ gap: 8 }}>
             <button className={`btn btn--escalate btn--sm ${busy ? 'btn--busy' : ''}`} disabled={busy} onClick={escalate}>
               {busy ? 'Working — please hold on…' : 'Escalate with this reason'}
+            </button>
+            <button className="btn btn--outline btn--sm" onClick={() => setPanel(null)}>Cancel</button>
+          </div>
+        </div>
+      )}
+
+      {panel === 'reopen' && (
+        <div className="card card--action mb">
+          <strong><RotateCcw size={15} style={{ verticalAlign: '-2px', marginRight: 5 }} />Reopen this complaint</strong>
+          <p className="muted" style={{ fontSize: '.88rem', margin: '4px 0 8px' }}>
+            The complaint goes back to the queue with the same officer still on it, and the student is told by email. Optional: say why.
+          </p>
+          <textarea rows={2} placeholder="e.g. Student says the portal still shows unpaid after the fix — reopening to double-check with Appiawave."
+            value={actionNote} onChange={(e) => setActionNote(e.target.value)} />
+          <div className="row mt" style={{ gap: 8 }}>
+            <button className={`btn btn--navy btn--sm ${busy ? 'btn--busy' : ''}`} disabled={busy} onClick={reopen}>
+              {busy ? 'Working — please hold on…' : 'Reopen & email the student'}
             </button>
             <button className="btn btn--outline btn--sm" onClick={() => setPanel(null)}>Cancel</button>
           </div>
@@ -360,14 +390,18 @@ export default function StaffTicket() {
             </div>
           )}
 
-          {/* conversation — student-visible */}
-          <div className="card mb">
+          {/* conversation — student-visible (locked once solved) */}
+          <div className={`card mb ${isLocked ? 'card--locked' : ''}`}>
             <div className="row row--between">
               <strong>Conversation with student</strong>
-              <span className="badge badge--resolved">{studentMsgs.length} message{studentMsgs.length === 1 ? '' : 's'}</span>
+              {isLocked
+                ? <span className="badge badge--resolved"><Lock size={11} style={{ verticalAlign: '-1px', marginRight: 3 }} />Closed — solved</span>
+                : <span className="badge badge--resolved">{studentMsgs.length} message{studentMsgs.length === 1 ? '' : 's'}</span>}
             </div>
             <p className="muted" style={{ fontSize: '.82rem', margin: '4px 0 0' }}>
-              The student sees everything here on their tracking page. Emails only go out when you tick “also email”.
+              {isLocked
+                ? 'This complaint is solved, so the conversation is read-only. If the student comes back, use the Reopen button above — everything continues from there.'
+                : 'The student sees everything here on their tracking page. Emails only go out when you tick “also email”.'}
             </p>
             <div className="timeline mt">
               {studentMsgs.length === 0 && <p className="muted">No student-visible messages yet — start the conversation below.</p>}
@@ -381,6 +415,8 @@ export default function StaffTicket() {
                 </div>
               ))}
             </div>
+            {!isLocked && (
+              <>
             <label className="field mt"><span>Reply to {student.fullName.split(/\s+/)[0]} <small>(they see this on the tracking page — tick below to also email it)</small></span>
               <textarea rows={3} value={reply} onChange={(e) => setReply(e.target.value)} />
             </label>
@@ -392,13 +428,17 @@ export default function StaffTicket() {
               onClick={() => { act(`/staff/tickets/${id}/reply`, { message: reply, emailIt: emailReply }, emailReply ? 'Reply sent + emailed to the student.' : 'Reply sent to the tracking page.').then(() => setReply('')); }}>
               {busy ? 'Sending…' : 'Send reply'}
             </button>
+              </>
+            )}
           </div>
 
-          {/* internal notes */}
-          <div className="card mb">
+          {/* internal notes (locked once solved) */}
+          <div className={`card mb ${isLocked ? 'card--locked' : ''}`}>
             <div className="row row--between">
               <strong>Internal notes</strong>
-              <span className="badge badge--rejected">{internalMsgs.length} note{internalMsgs.length === 1 ? '' : 's'}</span>
+              {isLocked
+                ? <span className="badge badge--rejected"><Lock size={11} style={{ verticalAlign: '-1px', marginRight: 3 }} />Locked</span>
+                : <span className="badge badge--rejected">{internalMsgs.length} note{internalMsgs.length === 1 ? '' : 's'}</span>}
             </div>
             <p className="muted" style={{ fontSize: '.82rem', margin: '4px 0 0' }}>
               Staff-only. The student <strong>never</strong> sees these — use them for handovers and senior review.
@@ -416,6 +456,8 @@ export default function StaffTicket() {
                 </div>
               ))}
             </div>
+            {!isLocked && (
+              <>
             <label className="field mt"><span>Add internal note</span>
               <textarea rows={2} value={note} onChange={(e) => setNote(e.target.value)} />
             </label>
@@ -424,6 +466,8 @@ export default function StaffTicket() {
               onClick={() => { act(`/staff/tickets/${id}/note`, { message: note }, 'Internal note saved.').then(() => setNote('')); }}>
               {busy ? 'Saving…' : 'Save note'}
             </button>
+              </>
+            )}
           </div>
         </div>
 
@@ -455,6 +499,31 @@ export default function StaffTicket() {
                 {studentHistory.map((h) => (
                   <li key={h.id} style={{ marginBottom: 4 }}>
                     <Link to={`/admin/tickets/${h.id}`}>{h.ticket_number}</Link> — {h.category} · {STATUS_LABELS[h.status]}
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
+
+          {/* who worked it — full accountability log (§20/§21) */}
+          {staffLog?.length > 0 && (
+            <div className="card mb">
+              <strong>Who has worked on it</strong>
+              <p className="muted" style={{ fontSize: '.8rem', margin: '4px 0 0' }}>
+                Every hand and every decision, in order — from first response to the engineer who closed it.
+              </p>
+              <ul className="timeline-list mt">
+                {staffLog.map((s, i) => (
+                  <li key={i}>
+                    <div>
+                      <strong>{s.who}</strong>
+                      <span className="badge badge--worklog" style={{ marginLeft: 6 }}>
+                        {s.role === 'engineer' ? 'Specialist Engineer' : s.role === 'senior' ? 'Specialist Engineer' : s.role === 'admin' ? 'Super ICT' : 'ICT Support'}
+                      </span>
+                      {' — '}{s.action}
+                      {s.detail && <span className="muted"> — “{s.detail}”</span>}
+                    </div>
+                    <small className="muted">{fmtDateTime(s.at)}</small>
                   </li>
                 ))}
               </ul>

@@ -1672,3 +1672,35 @@ button.admin-nav-group__label:hover span { color: var(--ink); }
   .admin-content { padding: 20px 14px 96px; }
   .ov-banner { padding: 22px 18px 18px; border-radius: 16px; }
 }
+
+/* ===================== solved / locked / worklog ===================== */
+
+/* Student-side solved banner — the celebration moment, unmistakable */
+.card--solved {
+  border: 1.5px solid #bfe3cb;
+  background: linear-gradient(135deg, #f2faf5 0%, #ffffff 60%);
+  box-shadow: 0 6px 24px rgba(15, 122, 61, .08);
+}
+.solved-banner { display: flex; gap: 14px; align-items: flex-start; }
+.solved-banner__icon {
+  flex: 0 0 46px; width: 46px; height: 46px; border-radius: 13px;
+  display: grid; place-items: center; color: #fff;
+  background: linear-gradient(140deg, var(--green) 0%, #0a5c30 100%);
+  box-shadow: 0 4px 12px rgba(15, 122, 61, .3);
+}
+.solved-banner strong { font-size: 1.02rem; color: var(--green-deep); }
+.solved-banner p { margin: 4px 0 0; font-size: .92rem; color: var(--muted); }
+
+/* Locked records — conversation frozen once a complaint is solved */
+.card--locked {
+  background: repeating-linear-gradient(-45deg, #fafbfc 0 14px, #f6f7f9 14px 28px);
+}
+.card--locked .btn, .card--locked textarea { display: none; }
+.card--locked .msg { opacity: .82; }
+
+/* Who-worked-on-it log badges */
+.badge--worklog {
+  background: #eef2f8; color: #3d4a63; border: 1px solid #dfe5ee;
+  font-size: .68rem; padding: 2px 8px; border-radius: 999px;
+  font-weight: 600; text-transform: uppercase; letter-spacing: .04em;
+}

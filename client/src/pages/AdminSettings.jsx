@@ -4,12 +4,14 @@ import { useSearchParams } from 'react-router-dom';
 import { useAuth } from '../auth.jsx';
 import { User, ClipboardList, School, Megaphone, Star, MoreVertical, Reply, ArrowUp, ArrowUpDown, KeyRound, Ban, Check, ArrowLeftRight, Undo2, Trash2 } from 'lucide-react';
 import { api } from '../auth.jsx';
+import { AuditTrailPanel } from './AdminAudit.jsx';
 
 const TABS = [
   ['accounts', 'Staff accounts', User],
   ['catalogue', 'Support services', ClipboardList],
   ['masterdata', 'Faculties & departments', School],
   ['updates', 'Homepage updates', Megaphone],
+  ['activity', 'Activity log', Star],
 ];
 
 /** Super ICT Support administration: accounts, services, master data. */
@@ -41,6 +43,7 @@ export default function AdminSettings() {
         {tab === 'catalogue' && <Catalogue readOnly />}
         {tab === 'masterdata' && <MasterData readOnly />}
         {tab === 'updates' && <Updates readOnly />}
+        {tab === 'activity' && <AuditTrailPanel />}
       </>
     );
   }
@@ -62,6 +65,7 @@ export default function AdminSettings() {
       {tab === 'catalogue' && <Catalogue />}
       {tab === 'masterdata' && <MasterData />}
       {tab === 'updates' && <Updates />}
+      {tab === 'activity' && <AuditTrailPanel />}
     </>
   );
 }

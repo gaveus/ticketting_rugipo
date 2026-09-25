@@ -35,7 +35,10 @@ const TRANSITIONS = {
   in_progress: ['waiting_student', 'escalated', 'resolved', 'rejected', 'assigned'],
   waiting_student: ['in_progress', 'escalated', 'resolved', 'rejected'],
   escalated: ['in_progress', 'resolved', 'rejected'],       // senior engineers work escalated tickets
-  resolved: ['closed', 'in_progress', 'open'],
+  // 'open' / 'in_progress' are the REOPEN paths: a solved complaint that came
+  // back (student pressed Reopen, or ICT spotted a miss) re-enters the flow —
+  // the original assignment is kept so the same officer/engineer continues.
+  resolved: ['closed', 'in_progress', 'open', 'rejected'],
   closed: ['open'],
   rejected: ['open'],
 };
@@ -592,6 +595,28 @@ router.get('/tickets/:id', async (req, res) => {
      FROM escalations e LEFT JOIN users u ON u.id = e.escalated_by
      WHERE e.ticket_id = ? ORDER BY e.id DESC LIMIT 1`, t.id) || null;
 
+  // The full "who worked on this" log — every human that touched the ticket:
+  // who escalated it (and why), which engineer closed it, who replied, who
+  // wrote notes, who verified the payment. This is the accountability record
+  // the "Attended by" line is just a summary of.
+  const escRows = await db.all(`SELECT escalated_by_name, escalated_by_staff_no, reason, resolved_by_name, resolved_at, created_at
+     FROM escalations WHERE ticket_id = ? ORDER BY created_at`, t.id);
+  const staffLog = [];
+  for (const e of escRows) {
+    staffLog.push({ who: e.escalated_by_name || 'ICT officer', role: 'ict', action: 'escalated to specialist engineers', detail: e.reason, at: e.created_at });
+    if (e.resolved_by_name) staffLog.push({ who: e.resolved_by_name, role: 'engineer', action: 'closed the escalated complaint', detail: null, at: e.resolved_at });
+  }
+  for (const m of messages) {
+    if (m.sender_role !== 'student' && m.sender_role !== 'system') {
+      staffLog.push({ who: m.sender_name, role: m.sender_role, action: m.visibility === 'internal' ? 'added an internal note' : 'replied to the student', detail: null, at: m.created_at });
+    }
+  }
+  if (payment?.verified_by_name && payment.verified_at) {
+    staffLog.push({ who: payment.verified_by_name, role: 'ict',
+      action: payment.verification_status === 'verified' ? 'verified the payment in records' : 'checked payment — no record found', detail: null, at: payment.verified_at });
+  }
+  staffLog.sort((a, b) => new Date(a.at) - new Date(b.at));
+
   // Previous complaints from the same student (§16).
   let studentHistory = [];
   let student = null;
@@ -627,8 +652,7 @@ router.get('/tickets/:id', async (req, res) => {
   res.json({
     ticket: { ...t, details: t.details ? JSON.parse(t.details || '{}') : {}, category: cat?.name, issue: issue?.name },
     student, studentHistory, messages, attachments, payment, history, staffList, escalation,
-    allowedTransitions: transitions,
-    viewerRole: req.user.role,
+    staffLog, allowedTransitions: transitions, viewerRole: req.user.role,
   });
 });
 
@@ -638,6 +662,9 @@ router.post('/tickets/:id/reply', async (req, res) => {
   const t = await db.get('SELECT * FROM tickets WHERE id = ?', req.params.id);
   if (!t) return res.status(404).json({ error: 'Ticket not found' });
   if (!await guardDesk(req, res, t)) return;
+  if (['resolved', 'closed', 'rejected'].includes(t.status)) {
+    return res.status(409).json({ error: 'This complaint is finished and locked. Reopen it first if the student came back with the same problem.' });
+  }
   const message = String(req.body?.message || '').trim();
   if (!message) return res.status(400).json({ error: 'Type a message first' });
   await db.run(`INSERT INTO ticket_messages (ticket_id, sender_name, sender_role, message, visibility)
@@ -658,6 +685,9 @@ router.post('/tickets/:id/note', async (req, res) => {
   const t = await db.get('SELECT * FROM tickets WHERE id = ?', req.params.id);
   if (!t) return res.status(404).json({ error: 'Ticket not found' });
   if (!await guardDesk(req, res, t)) return;
+  if (['resolved', 'closed', 'rejected'].includes(t.status)) {
+    return res.status(409).json({ error: 'This complaint is finished and locked. Reopen it first to add notes.' });
+  }
   const message = String(req.body?.message || '').trim();
   if (!message) return res.status(400).json({ error: 'Type a note first' });
   await db.run(`INSERT INTO ticket_messages (ticket_id, sender_name, sender_role, message, visibility)
@@ -669,7 +699,13 @@ router.post('/tickets/:id/note', async (req, res) => {
 /* ------------------------- status transitions ------------------------- */
 
 router.post('/tickets/:id/status', async (req, res) => {
-  const t = await db.get('SELECT * FROM tickets WHERE id = ?', req.params.id);
+  // Full names for the emails: category and issue are joins, not columns —
+  // pulling them here is what killed the “(undefined — undefined)” students saw.
+  const t = await db.get(`SELECT t.*, c.name AS category_name, i.name AS issue_name
+     FROM tickets t
+     JOIN ticket_categories c ON c.id = t.category_id
+     JOIN ticket_issue_types i ON i.id = t.issue_type_id
+     WHERE t.id = ?`, req.params.id);
   if (!t) return res.status(404).json({ error: 'Ticket not found' });
   if (!await guardDesk(req, res, t)) return;
   const next = String(req.body?.status || '');
@@ -700,6 +736,14 @@ router.post('/tickets/:id/status', async (req, res) => {
     await db.run(`INSERT INTO ticket_status_history (ticket_id, old_status, new_status, changed_by, note)
                 VALUES (?, ?, ?, ?, ?)`, t.id, t.status, next, req.user.full_name, note);
 
+    if (next === 'open' || next === 'in_progress') {
+      // REOPEN: the solved complaint came back. A system line on the record
+      // says who reopened it and why — visible to staff AND the student.
+      await db.run(`INSERT INTO ticket_messages (ticket_id, sender_name, sender_role, message, visibility)
+                  VALUES (?, 'System', 'system', ?, 'student')`, t.id,
+        `Complaint reopened by ${req.user.full_name}${note ? ' — ' + note.trim() : ' — work continues on it.'}`);
+    }
+
     if (next === 'escalated') {
       // Route by kind: payment complaints (the ticket carries payment details)
       // go to the payment seniors; everything else to the portal seniors.
@@ -708,8 +752,21 @@ router.post('/tickets/:id/status', async (req, res) => {
          VALUES (?, ?, ?, ?, ?, ?, ?)`, t.id, req.user.id, req.user.full_name, req.user.staff_no || null, note.trim(), t.status, spec);
       await db.run(`INSERT INTO ticket_messages (ticket_id, sender_name, sender_role, message, visibility)
                   VALUES (?, 'System', 'system', ?, 'internal')`, t.id, `Escalated to Senior ICT Engineers by ${req.user.full_name} (${req.user.staff_no || 'no staff ID'}). Reason: ${note.trim()}`);
+      // Hand the ticket over: it now BELONGS to the desk it was escalated to,
+      // so "Assigned to" shows the specialist engineer, not the first-line
+      // officer who sent it up. First unassigned senior of that desk takes the
+      // ownership slot; their name is what the team sees in the queue.
+      const deskSenior = await db.get(
+        `SELECT id, full_name FROM users WHERE role = 'senior' AND active = 1 AND specialty = ? ORDER BY id LIMIT 1`, spec);
+      if (deskSenior) {
+        await db.run(`UPDATE ticket_assignments SET unassigned_at = now() WHERE ticket_id = ? AND unassigned_at IS NULL`, t.id);
+        await db.run(`INSERT INTO ticket_assignments (ticket_id, staff_id, assigned_by) VALUES (?, ?, ?)`, t.id, deskSenior.id, req.user.id);
+        await db.run(`UPDATE tickets SET assigned_staff_id = ? WHERE id = ?`, deskSenior.id, t.id);
+      }
     }
     if (leavingEscalated) {
+      // The senior engineer who actually closed the escalation is recorded on
+      // the escalation record itself — the permanent "who worked it" log.
       await db.run(`UPDATE escalations SET resolved_by = ?, resolved_by_name = ?, resolved_at = now()
                   WHERE ticket_id = ? AND resolved_at IS NULL`, req.user.id, req.user.full_name, t.id);
     }
@@ -732,7 +789,7 @@ router.post('/tickets/:id/status', async (req, res) => {
       queueEmail({
         ticketId: t.id, to: a.email, kind: 'escalation',
         subject: `⬆ ${specLabel} complaint ${t.ticket_number} needs your review`,
-        body: `A ${specLabel.toLowerCase()} payment/portal complaint has been escalated and routed to you.\n\nTicket: ${t.ticket_number} (${t.category} — ${t.issue})\nStudent: ${t.student_name} (${t.matric_no})\nEscalated by: ${req.user.full_name} (${req.user.staff_no || 'no staff ID'})\nReason: ${note}\n\nOpen your dashboard to review it.`,
+        body: `A ${specLabel.toLowerCase()} complaint has been escalated and routed to you.\n\nTicket: ${t.ticket_number}\nService: ${t.category_name} — ${t.issue_name}\nStudent: ${t.student_name} (${t.matric_no || 'no matric on record'})\nEscalated by: ${req.user.full_name}${req.user.staff_no ? ` (${req.user.staff_no})` : ''}\nReason: ${note}\n\nOpen your dashboard to review it.`,
       });
     }
     // No email to the student here — escalation is an internal step; they see
@@ -740,10 +797,18 @@ router.post('/tickets/:id/status', async (req, res) => {
   } else if (next === 'resolved' || next === 'closed') {
     // THE core requirement (§23): resolving a ticket messages the student's
     // saved email automatically — the resolver never types an email address.
+    // The ICT note is what the student cares about — make it stand out.
     notifyStudent(t,
-      `✅ Resolved: your complaint ${t.ticket_number} has been solved`,
-      `Hello ${t.student_name},\n\nGood news — your complaint ${t.ticket_number} (${t.category} — ${t.issue}) has been RESOLVED.\n\n${note ? 'ICT note: ' + note + '\n\n' : ''}If the problem happens again, reply on your ticket page or log a new complaint with your Tracking ID.\n\nThank you for your patience.\n— RUGIPO ICT Support, Rufus Giwa Polytechnic, Owo`,
+      `✅ Solved: your complaint ${t.ticket_number} has been resolved`,
+      `Hello ${t.student_name},\n\nGood news — your complaint has been RESOLVED.\n\nTracking ID: ${t.ticket_number}\nWhat it was about: ${t.category_name} — ${t.issue_name}\n${note ? `What ICT did: ${note}\n\n` : '\n'}If the problem happens again, open your tracking page and press “Reopen this complaint”, or log a new complaint with your Tracking ID.\n\nThank you for your patience.\n— RUGIPO ICT Support, Rufus Giwa Polytechnic, Owo`,
       'resolved');
+  } else if (next === 'open' || next === 'in_progress') {
+    // Reopen notice — quiet but confirmatory: the student must know the
+    // complaint is active again and that the same team is on it.
+    notifyStudent(t,
+      `We are still on it — complaint ${t.ticket_number} reopened`,
+      `Hello ${t.student_name},\n\nYour complaint ${t.ticket_number} has been reopened and is being worked on again.\n\nWhat it was about: ${t.category_name} — ${t.issue_name}\n${note ? `Why: ${note}\n\n` : '\n'}Everything continues on your tracking page.\n\n— RUGIPO ICT Support`,
+      'status');
   } else if (next === 'waiting_student' || next === 'rejected') {
     // Only email the student when their input is needed or the complaint was
     // rejected. Routine internal stages (assigned, in progress, escalated)

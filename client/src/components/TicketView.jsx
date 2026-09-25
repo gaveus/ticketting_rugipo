@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { api, downloadAttachment, fmtDateTime } from '../auth.jsx';
-import { Check, Paperclip } from 'lucide-react';
+import { Check, Paperclip, Lock, RotateCcw, PartyPopper } from 'lucide-react';
 import { STATUS_LABELS } from './Layout.jsx';
 
 /** The journey every complaint walks — the student's progress bar follows it. */
@@ -23,6 +23,8 @@ export default function TicketView({ ticketId, email }) {
   const [error, setError] = useState('');
   const [reply, setReply] = useState('');
   const [busy, setBusy] = useState(false);
+  const [reopenBox, setReopenBox] = useState(false);
+  const [reopenReason, setReopenReason] = useState('');
 
   function load() {
     api(`/tickets/${ticketId}?email=${encodeURIComponent(email)}`)
@@ -49,6 +51,7 @@ export default function TicketView({ ticketId, email }) {
   const { ticket, messages, attachments, payment, history } = data;
   const active = stageIndex(ticket.status);
   const rejected = ticket.status === 'rejected';
+  const solved = ['resolved', 'closed'].includes(ticket.status);
 
   async function sendReply(e) {
     e.preventDefault();
@@ -60,6 +63,19 @@ export default function TicketView({ ticketId, email }) {
         body: JSON.stringify({ email, message: reply }),
       });
       setReply('');
+      load();
+    } catch (err) { setError(err.message); } finally { setBusy(false); }
+  }
+
+  async function doReopen() {
+    setBusy(true);
+    try {
+      await api(`/tickets/${ticketId}/reopen`, {
+        method: 'POST',
+        body: JSON.stringify({ email, reason: reopenReason }),
+      });
+      setReopenBox(false); setReopenReason('');
+      setError('');
       load();
     } catch (err) { setError(err.message); } finally { setBusy(false); }
   }
@@ -79,6 +95,43 @@ export default function TicketView({ ticketId, email }) {
         <p style={{ whiteSpace: 'pre-wrap' }} className="mt">{ticket.description}</p>
       </div>
 
+      {/* ------------------------- solved banner ------------------------- */}
+      {solved && (
+        <div className="card card--solved mb">
+          <div className="solved-banner">
+            <span className="solved-banner__icon"><PartyPopper size={22} /></span>
+            <div>
+              <strong>Solved — your complaint has been resolved</strong>
+              <p>
+                The ICT team has finished working on {ticket.ticketNumber} and marked it solved.
+                Check the “What ICT did” note in your email and in the messages below.
+                {ticket.status === 'closed' && ' This record has been filed away.'}
+              </p>
+            </div>
+          </div>
+          {!reopenBox ? (
+            <div className="row" style={{ gap: 8, flexWrap: 'wrap' }}>
+              <button type="button" className="btn btn--outline btn--sm" onClick={() => setReopenBox(true)}>
+                <RotateCcw size={14} style={{ verticalAlign: '-2px', marginRight: 5 }} />Problem came back? Reopen this complaint
+              </button>
+              <small className="muted">Only press this if the same problem returned — it sends the complaint back to the ICT team.</small>
+            </div>
+          ) : (
+            <div className="mt">
+              <label className="field"><span>What happened when you tried the fix? <small>(helps ICT pick it up faster)</small></span>
+                <textarea rows={2} value={reopenReason} onChange={(e) => setReopenReason(e.target.value)}
+                  placeholder="e.g. The portal still shows unpaid after the correction." />
+              </label>
+              <div className="row" style={{ gap: 8 }}>
+                <button className={`btn btn--navy btn--sm ${busy ? 'btn--busy' : ''}`} disabled={busy} onClick={doReopen}>
+                  {busy ? 'Reopening…' : 'Reopen complaint'}</button>
+                <button type="button" className="btn btn--outline btn--sm" onClick={() => { setReopenBox(false); setReopenReason(''); }}>Cancel</button>
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+
       {/* ------------------------- progress stepper ------------------------- */}
       <div className="card mb">
         <strong>Progress</strong>
@@ -89,8 +142,8 @@ export default function TicketView({ ticketId, email }) {
         ) : (
           <div className="stage-rail mt">
             {STAGES.map((s, i) => (
-              <div key={s.key} className={`stage-rail__step ${i < active ? 'is-done' : ''} ${i === active ? 'is-active' : ''}`}>
-                <span className="stage-rail__dot">{i < active ? <Check size={13} /> : i + 1}</span>
+              <div key={s.key} className={`stage-rail__step ${(i < active || solved) ? 'is-done' : ''} ${i === active && !solved ? 'is-active' : ''}`}>
+                <span className="stage-rail__dot">{(i < active || solved) ? <Check size={13} /> : i + 1}</span>
                 <strong>{s.label}</strong>
               </div>
             ))}
@@ -154,14 +207,21 @@ export default function TicketView({ ticketId, email }) {
             </div>
           ))}
         </div>
-        <form onSubmit={sendReply} className="mt">
-          <label className="field"><span>Reply to ICT <small>(they see this instantly)</small></span>
-            <textarea rows={3} value={reply} onChange={(e) => setReply(e.target.value)} placeholder="Type your reply…" />
-          </label>
-          <button className={`btn btn--navy btn--sm ${busy ? 'btn--busy' : ''}`} disabled={busy || !reply.trim()}>
-            {busy ? 'Sending — please hold on…' : 'Send reply'}
-          </button>
-        </form>
+        {solved ? (
+          <div className="notice notice--info mt" style={{ marginBottom: 0 }}>
+            <Lock size={13} style={{ verticalAlign: '-2px', marginRight: 5 }} />This complaint is solved, so the conversation is closed.
+            {ticket.status !== 'closed' && ' If the same problem came back, use the reopen button at the top of this page.'}
+          </div>
+        ) : (
+          <form onSubmit={sendReply} className="mt">
+            <label className="field"><span>Reply to ICT <small>(they see this instantly)</small></span>
+              <textarea rows={3} value={reply} onChange={(e) => setReply(e.target.value)} placeholder="Type your reply…" />
+            </label>
+            <button className={`btn btn--navy btn--sm ${busy ? 'btn--busy' : ''}`} disabled={busy || !reply.trim()}>
+              {busy ? 'Sending — please hold on…' : 'Send reply'}
+            </button>
+          </form>
+        )}
       </div>
 
       {/* ------------------------- history ------------------------- */}

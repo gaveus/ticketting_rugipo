@@ -473,6 +473,9 @@ router.post('/chat/:token/close', async (req, res) => {
 router.post('/tickets/:id/reply', async (req, res) => {
   const t = await db.get('SELECT * FROM tickets WHERE id = ? AND email = ?', req.params.id, String(req.body?.email || '').trim().toLowerCase());
   if (!t) return res.status(404).json({ error: 'Ticket not found. Check your tracking ID and email.' });
+  if (['resolved', 'closed', 'rejected'].includes(t.status)) {
+    return res.status(409).json({ error: 'This complaint is marked solved, so the conversation is closed. Press “Reopen this complaint” if the problem came back.' });
+  }
   const message = String(req.body?.message || '').trim();
   if (!message) return res.status(400).json({ error: 'Type a message first' });
   await db.run(`INSERT INTO ticket_messages (ticket_id, sender_name, sender_role, message, visibility)
@@ -484,6 +487,37 @@ router.post('/tickets/:id/reply', async (req, res) => {
       await queueEmail({ ticketId: t.id, to: officer.email, kind: 'reply',
         subject: `New student reply on ${t.ticket_number}`,
         body: message.slice(0, 300) });
+    }
+  }
+  res.json({ ok: true });
+});
+
+/**
+ * Reopen — the student says the solved problem came back. The complaint goes
+ * back to the queue for the SAME officer/engineer (assignment is kept) and a
+ * system line is written on the record. Also notifies the assigned staff by
+ * email so it is not missed.
+ */
+router.post('/tickets/:id/reopen', async (req, res) => {
+  const t = await db.get('SELECT * FROM tickets WHERE id = ? AND email = ?', req.params.id, String(req.body?.email || '').trim().toLowerCase());
+  if (!t) return res.status(404).json({ error: 'Ticket not found. Check your tracking ID and email.' });
+  if (!['resolved', 'closed'].includes(t.status)) {
+    return res.status(409).json({ error: 'Only a solved complaint can be reopened.' });
+  }
+  const reason = cleanText(req.body?.reason || '', 500);
+  const backTo = 'open';
+  await db.run(`UPDATE tickets SET status = ?, updated_at = now() WHERE id = ?`, backTo, t.id);
+  await db.run(`INSERT INTO ticket_status_history (ticket_id, old_status, new_status, changed_by, note)
+     VALUES (?, ?, ?, 'student', ?)`, t.id, t.status, backTo, reason || 'Student says the problem came back');
+  await db.run(`INSERT INTO ticket_messages (ticket_id, sender_name, sender_role, message, visibility)
+     VALUES (?, ?, 'student', ?, 'student')`, t.id, t.student_name,
+    reason ? `Reopened this complaint: ${reason}` : 'Reopened this complaint — the problem came back.');
+  if (t.assigned_staff_id) {
+    const officer = await db.get('SELECT email FROM users WHERE id = ?', t.assigned_staff_id);
+    if (officer) {
+      await queueEmail({ ticketId: t.id, to: officer.email, kind: 'reply',
+        subject: `Reopened: ${t.ticket_number} — the student says it is not fixed`,
+        body: `${t.student_name} reopened complaint ${t.ticket_number}.\n\nWhat they said: ${reason || 'The problem came back.'}\n\nOpen the ICT Staff Portal to continue on it.\n\n— RUGIPO ICT Support` });
     }
   }
   res.json({ ok: true });

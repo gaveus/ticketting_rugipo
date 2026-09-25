@@ -75,11 +75,39 @@ function wrapEmail({ heading, body, note, cta }) {
 </html>`;
 }
 
-/** Turn plain-text body (the content routes already compose) into paragraphs. */
+/**
+ * Turn plain-text body (the content routes compose) into readable branded
+ * paragraphs. Lines like "Tracking ID: RGP-…" or "ICT note: …" become
+ * highlighted key/value rows so the important facts jump out — students
+ * should never have to hunt for their ID or what ICT actually did.
+ */
+const KEY_RE = /^(Tracking ID|What it was about|What ICT did|Ticket|Service|Student|Escalated by|Reason|Role|Staff ID|Sign in here|Email|Temporary password|Amount|Payment was for|When|Our reply|What you told us)\s*:/i;
+
 function textToHtml(text = '') {
   return escapeHtml(text)
     .split(/\n{2,}/)
-    .map((p) => `<p style="margin:0 0 12px;">${p.replace(/\n/g, '<br>')}</p>`)
+    .map((p) => {
+      // A whole paragraph that is one key-value line → highlighted fact box.
+      const m = p.match(KEY_RE);
+      if (m && !p.includes('\n')) {
+        const idx = p.indexOf(':');
+        const key = p.slice(0, idx);
+        const val = p.slice(idx + 1).trim();
+        const isNote = /^ICT note$/i.test(key);
+        if (isNote) {
+          // The resolution note is the headline fact — gold callout, bold.
+          return `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin:14px 0 16px;"><tr><td style="background:#fdf6dd;border-left:4px solid ${GOLD};border-radius:8px;padding:12px 14px;">
+            <div style="font-family:Arial,Helvetica,sans-serif;font-size:12px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:${MUTED};margin-bottom:4px;">What ICT did</div>
+            <div style="font-family:Arial,Helvetica,sans-serif;font-size:15px;font-weight:700;line-height:1.55;color:${GREEN_DEEP};">${val}</div>
+          </td></tr></table>`;
+        }
+        return `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin:2px 0;"><tr>
+          <td style="font-family:Arial,Helvetica,sans-serif;font-size:13.5px;font-weight:700;color:${MUTED};padding:5px 12px 5px 0;white-space:nowrap;vertical-align:top;">${key}:</td>
+          <td style="font-family:Arial,Helvetica,sans-serif;font-size:14.5px;font-weight:700;color:${INK};padding:5px 0;">${val}</td>
+        </tr></table>`;
+      }
+      return `<p style="margin:0 0 12px;">${p.replace(/\n/g, '<br>')}</p>`;
+    })
     .join('');
 }
 

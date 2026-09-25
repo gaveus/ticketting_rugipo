@@ -14,6 +14,7 @@ const ACTION_LABELS = {
   'staff.promote-super': 'Granted Super ICT Support',
   'staff.active': 'Account enabled or disabled',
   'staff.reset-password': 'Password reset',
+  'staff.delete': 'Staff account deleted',
   'staff.specialty': 'Senior desk changed',
   'masterdata.faculty.create': 'Faculty added',
   'masterdata.department.create': 'Department added',
@@ -41,8 +42,12 @@ function toneFor(action) {
   return '';
 }
 
-/** Audit trail — Super ICT Support only. Every staff action lands here. */
-export default function AdminAudit() {
+/**
+ * Audit trail — Super ICT Support only. Every staff action lands here.
+ * Lives as a tab on the Administration page; also mounted standalone at
+ * /admin/audit for deep links.
+ */
+export function AuditTrailPanel() {
   const { user } = useAuth();
   const isSuper = user?.role === 'admin';
   const [data, setData] = useState(null);
@@ -86,7 +91,10 @@ export default function AdminAudit() {
   const describe = (e) => {
     try {
       const m = e.metadata ? JSON.parse(e.metadata) : {};
-      if (e.action === 'ticket.status') return `open → ${m.to || '?'}`;
+      if (e.action === 'ticket.status') {
+        const L = { open: 'Open', assigned: 'Assigned', in_progress: 'In progress', waiting_student: 'Waiting for student', escalated: 'Escalated', resolved: 'Resolved', closed: 'Closed', rejected: 'Rejected' };
+        return `${m.from ? (L[m.from] || m.from) + ' → ' : ''}${L[m.to] || m.to || '?'}`;
+      }
       if (e.action === 'ticket.assign') return m.staffId ? `to staff #${m.staffId}` : '';
       if (e.action === 'staff.create') return m.email ? `for ${m.email} (${m.role})` : '';
       if (e.action === 'staff.role') return `${m.from || '?'} → ${m.to || '?'}`;
@@ -168,4 +176,9 @@ export default function AdminAudit() {
       )}
     </>
   );
+}
+
+/** Standalone route — deep links from elsewhere still work. */
+export default function AdminAudit() {
+  return <AuditTrailPanel />;
 }
