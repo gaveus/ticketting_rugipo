@@ -26,23 +26,44 @@ export function humanizeError(status, serverMessage) {
 export function api(path, options = {}) {
   const raw = localStorage.getItem(KEY);
   const token = raw ? JSON.parse(raw).token : null;
-  const attempt = fetch(`/api${path}`, {
-    ...options,
-    headers: {
-      'Content-Type': 'application/json',
-      ...(token ? { Authorization: `Bearer ${token}` } : {}),
-      ...(options.headers || {}),
-    },
-  }).then(async (r) => {
+  // Reads (GET) are safe to fire twice — never once show "busy" for a load
+  // that a quiet second attempt would have satisfied. Writes are retried on
+  // the server's own transient-retry layer instead, so no double-submit risk.
+  const isGet = !options.method || options.method === 'GET';
+  async function attemptOnce() {
+    const r = await fetch(`/api${path}`, {
+      ...options,
+      headers: {
+        'Content-Type': 'application/json',
+        ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        ...(options.headers || {}),
+      },
+    });
     // A 401 here means the session truly expired — clear the stale session so
     // the next navigation shows the sign-in gate instead of silent failures.
     if (r.status === 401 && !path.startsWith('/auth/login')) {
       try { localStorage.removeItem(KEY); } catch { /* ignore */ }
     }
     const data = await r.json().catch(() => ({}));
-    if (!r.ok) throw new Error(humanizeError(r.status, data.error));
+    if (!r.ok) {
+      const err = new Error(humanizeError(r.status, data.error));
+      err.status = r.status;
+      throw err;
+    }
     return data;
-  });
+  }
+  const attempt = (async () => {
+    if (!isGet) return attemptOnce();
+    for (let i = 1; ; i++) {
+      try {
+        return await attemptOnce();
+      } catch (e) {
+        const retryable = [502, 503, 504].includes(e.status) || (e instanceof TypeError);
+        if (!retryable || i >= 2) throw e;
+        await new Promise((res) => setTimeout(res, 700));
+      }
+    }
+  })();
   // A dead network must not produce a raw "Failed to fetch" — say it in words.
   return attempt.catch((e) => {
     if (e instanceof TypeError && !navigator.onLine) throw new Error('You appear to be offline. Please check your internet connection and try again.');

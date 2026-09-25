@@ -81,15 +81,42 @@ function hasReturning(sql) {
   return /\bRETURNING\b/i.test(sql);
 }
 
+/* ------------------------- transient-failure retry ------------------------
+ * Serverless + managed Postgres (Vercel ↔ Aiven) produces short blips: a cold
+ * connection, a dropped socket, or the provider's connection limit flashing
+ * "too many clients". One failure must not become a user-visible error —
+ * every query silently retries a couple of times with a tiny backoff before
+ * giving up. Transactions are retried only as a whole (rollback first), and
+ * queries already inside a transaction are never retried here (their client
+ * is bound and possibly broken — the tx wrapper handles its own fate).
+ */
+const TRANSIENT_CODES = new Set(['ECONNRESET', 'ETIMEDOUT', 'ECONNREFUSED', 'ENOTFOUND', 'EAI_AGAIN', 'EPIPE', '57P01', '53300']);
+function isTransient(e) {
+  if (!e) return false;
+  if (TRANSIENT_CODES.has(e.code)) return true;
+  return /too many clients|connection terminated|timeout expired|terminating connection|connection ended/i.test(e.message || '');
+}
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+async function withRetry(fn) {
+  for (let attempt = 1; ; attempt++) {
+    try {
+      return await fn();
+    } catch (e) {
+      if (attempt >= 3 || als.getStore() || !isTransient(e)) throw e;
+      await sleep(150 * attempt * attempt); // 150ms, 600ms
+    }
+  }
+}
+
 async function run(sql, ...params) {
   sql = toPgSql(sql);
   if (/^\s*INSERT\b/i.test(sql) && !hasReturning(sql) && !/\bON CONFLICT\b/i.test(sql)) {
     sql += ' RETURNING id';
   }
   const store = als.getStore();
-  const r = await (store
+  const r = await withRetry(() => (store
     ? store.client.query(sql, params)
-    : withClient((c) => c.query(sql, params)));
+    : withClient((c) => c.query(sql, params))));
   if (r.command === 'INSERT' && r.rows[0] && r.rows[0].id != null) {
     return { changes: r.rowCount, lastInsertRowid: r.rows[0].id };
   }
@@ -116,14 +143,18 @@ const db = {
   get(sql, ...params) {
     sql = toPgSql(sql);
     const store = als.getStore();
-    const q = store ? store.client.query(sql, params) : withClient((c) => c.query(sql, params));
+    const q = withRetry(() => (store
+      ? store.client.query(sql, params)
+      : withClient((c) => c.query(sql, params))));
     return Promise.resolve(q).then((r) => r.rows[0]);
   },
 
   all(sql, ...params) {
     sql = toPgSql(sql);
     const store = als.getStore();
-    const q = store ? store.client.query(sql, params) : withClient((c) => c.query(sql, params));
+    const q = withRetry(() => (store
+      ? store.client.query(sql, params)
+      : withClient((c) => c.query(sql, params))));
     return Promise.resolve(q).then((r) => r.rows);
   },
 
@@ -133,7 +164,9 @@ const db = {
 
   exec(sql) {
     const store = als.getStore();
-    const q = store ? store.client.query(sql) : withClient((c) => c.query(sql));
+    const q = withRetry(() => (store
+      ? store.client.query(sql)
+      : withClient((c) => c.query(sql))));
     return Promise.resolve(q).then(() => {});
   },
 
