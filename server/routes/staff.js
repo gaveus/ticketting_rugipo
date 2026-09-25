@@ -935,14 +935,21 @@ router.get('/analytics', async (req, res) => {
   const avgResolution = (await db.get(`SELECT AVG(EXTRACT(EPOCH FROM (resolved_at - created_at)) / 3600.0) AS hours FROM tickets WHERE resolved_at IS NOT NULL AND ${scope.sql} AND ${avgWhere}`, ...scope.params, ...avgParams)).hours;
   const fastest = await db.get(`SELECT MIN(EXTRACT(EPOCH FROM (resolved_at - created_at)) / 3600.0) AS h FROM tickets WHERE resolved_at IS NOT NULL AND ${scope.sql} AND ${avgWhere}`, ...scope.params, ...avgParams);
   const slowest = await db.get(`SELECT MAX(EXTRACT(EPOCH FROM (resolved_at - created_at)) / 3600.0) AS h FROM tickets WHERE resolved_at IS NOT NULL AND ${scope.sql} AND ${avgWhere}`, ...scope.params, ...avgParams);
-  const byDepartment = await db.all(`SELECT COALESCE(t.department,'(none)') AS dept, COUNT(*)::int AS n FROM tickets t ${where} GROUP BY dept ORDER BY n DESC LIMIT 10`, ...params);
-  const byFaculty = await db.all(`SELECT COALESCE(f.name,'(none)') AS faculty, COUNT(*)::int AS n
+  // Panels say how many COMPLAINTS and how many distinct STUDENTS — one
+  // student filing 3 complaints must never read as "3 affected students".
+  const byDepartment = await db.all(`SELECT COALESCE(t.department,'(none)') AS dept, COUNT(*)::int AS n, COUNT(DISTINCT t.email)::int AS students FROM tickets t ${where} GROUP BY dept ORDER BY n DESC LIMIT 10`, ...params);
+  const byFaculty = await db.all(`SELECT COALESCE(f.name,'(none)') AS faculty, COUNT(*)::int AS n, COUNT(DISTINCT t.email)::int AS students
      FROM tickets t LEFT JOIN faculties f ON f.id = t.faculty_id ${where} GROUP BY f.id ORDER BY n DESC`, ...params);
-  const byLevelMode = await db.all(`SELECT COALESCE(t.academic_level,'(none)') AS lvl, COALESCE(t.study_mode,'(none)') AS mode, COUNT(*)::int AS n
+  const byLevelMode = await db.all(`SELECT COALESCE(t.academic_level,'(none)') AS lvl, COALESCE(t.study_mode,'(none)') AS mode, COUNT(*)::int AS n, COUNT(DISTINCT t.email)::int AS students
      FROM tickets t ${where} GROUP BY lvl, mode ORDER BY n DESC`, ...params);
-  const staffWorkload = await db.all(`SELECT COALESCE(s.full_name,'(unassigned)') AS staff, COUNT(*)::int AS n,
+  // Workload credits the officer who ACTUALLY handled each complaint: a
+  // no-hand-over resolve belongs to its resolver, not to "(unassigned)".
+  const staffWorkload = await db.all(`SELECT COALESCE(s.full_name,
+     (SELECT h.changed_by FROM ticket_status_history h WHERE h.ticket_id = t.id AND h.new_status IN ('resolved','closed')
+        AND h.changed_by IS NOT NULL AND h.changed_by NOT IN ('student','system')
+        ORDER BY h.id DESC LIMIT 1), '(unassigned)') AS staff, COUNT(*)::int AS n,
      COUNT(*) FILTER (WHERE t.status IN ('resolved','closed'))::int AS done
-     FROM tickets t LEFT JOIN users s ON s.id=t.assigned_staff_id ${where} GROUP BY s.id ORDER BY n DESC`, ...params);
+     FROM tickets t LEFT JOIN users s ON s.id=t.assigned_staff_id ${where} GROUP BY s.id, staff ORDER BY n DESC`, ...params);
   const payments = await db.all(`SELECT p.verification_status, COUNT(*)::int AS n FROM ticket_payment_details p
      JOIN tickets t ON t.id = p.ticket_id ${where} GROUP BY p.verification_status`, ...params);
   const scoped = req.user.role === 'senior';

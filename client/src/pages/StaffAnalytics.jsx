@@ -406,20 +406,20 @@ export default function StaffAnalytics() {
           <div className="card">
             <strong>Most affected departments</strong>
             <ul className="muted mt" style={{ paddingLeft: 18 }}>
-              {data.byDepartment.slice(0, 6).map((d) => <li key={d.dept}>{d.dept} — <strong>{d.n}</strong></li>)}
+              {data.byDepartment.slice(0, 6).map((d) => <li key={d.dept}>{d.dept} — <strong>{d.n}</strong> complaint{d.n === 1 ? '' : 's'}{d.students < d.n ? ` from ${d.students} student${d.students === 1 ? '' : 's'}` : ''}</li>)}
             </ul>
           </div>
           <div className="card">
             <strong>By faculty / school</strong>
             <ul className="muted mt" style={{ paddingLeft: 18 }}>
-              {data.byFaculty.slice(0, 6).map((d) => <li key={d.faculty}>{d.faculty} — <strong>{d.n}</strong></li>)}
+              {data.byFaculty.slice(0, 6).map((d) => <li key={d.faculty}>{d.faculty} — <strong>{d.n}</strong> complaint{d.n === 1 ? '' : 's'}{d.students < d.n ? ` from ${d.students} student${d.students === 1 ? '' : 's'}` : ''}</li>)}
             </ul>
           </div>
           <div className="card">
             <strong>Level &amp; study mode</strong>
             <ul className="muted mt" style={{ paddingLeft: 18 }}>
               {data.byLevelMode.slice(0, 6).map((d) => (
-                <li key={`${d.lvl}-${d.mode}`}>{d.lvl === '(none)' ? 'Unspecified' : d.lvl} · {d.mode === 'PART_TIME' ? 'Part-Time' : d.mode === 'FULL_TIME' ? 'Full-Time' : d.mode} — <strong>{d.n}</strong></li>
+                <li key={`${d.lvl}-${d.mode}`}>{d.lvl === '(none)' ? 'Unspecified' : d.lvl} · {d.mode === 'PART_TIME' ? 'Part-Time' : d.mode === 'FULL_TIME' ? 'Full-Time' : d.mode} — <strong>{d.n}</strong> complaint{d.n === 1 ? '' : 's'}{d.students < d.n ? ` from ${d.students} student${d.students === 1 ? '' : 's'}` : ''}</li>
               ))}
             </ul>
           </div>

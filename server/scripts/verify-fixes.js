@@ -51,5 +51,22 @@ const { db, readyPromise } = require('../db');
      ORDER BY t.created_at DESC LIMIT 8`);
   for (const r of recent) console.log(`  ${r.ticket_number} → ${r.assigned || (r.resolved_by ? `${r.resolved_by} (resolved)` : 'Unassigned')}`);
 
+  console.log('\n=== 4. reports: departments / faculty / level (complaints vs students) ===');
+  const byDept = await db.all(`SELECT COALESCE(t.department,'(none)') AS dept, COUNT(*)::int AS n, COUNT(DISTINCT t.email)::int AS students FROM tickets t GROUP BY dept ORDER BY n DESC LIMIT 5`);
+  for (const d of byDept) console.log(`  ${d.dept} — ${d.n} complaint(s) from ${d.students} student(s)`);
+  const byFac = await db.all(`SELECT COALESCE(f.name,'(none)') AS faculty, COUNT(*)::int AS n, COUNT(DISTINCT t.email)::int AS students FROM tickets t LEFT JOIN faculties f ON f.id = t.faculty_id GROUP BY f.id ORDER BY n DESC LIMIT 5`);
+  for (const d of byFac) console.log(`  ${d.faculty} — ${d.n} complaint(s) from ${d.students} student(s)`);
+  const byLvl = await db.all(`SELECT COALESCE(t.academic_level,'(none)') AS lvl, COALESCE(t.study_mode,'(none)') AS mode, COUNT(*)::int AS n, COUNT(DISTINCT t.email)::int AS students FROM tickets t GROUP BY lvl, mode ORDER BY n DESC LIMIT 5`);
+  for (const d of byLvl) console.log(`  ${d.lvl} · ${d.mode} — ${d.n} complaint(s) from ${d.students} student(s)`);
+
+  console.log('\n=== 5. officers on duty (no-hand-over credit) ===');
+  const wl = await db.all(`SELECT COALESCE(s.full_name,
+     (SELECT h.changed_by FROM ticket_status_history h WHERE h.ticket_id = t.id AND h.new_status IN ('resolved','closed')
+        AND h.changed_by IS NOT NULL AND h.changed_by NOT IN ('student','system')
+        ORDER BY h.id DESC LIMIT 1), '(unassigned)') AS staff, COUNT(*)::int AS n,
+     COUNT(*) FILTER (WHERE t.status IN ('resolved','closed'))::int AS done
+     FROM tickets t LEFT JOIN users s ON s.id=t.assigned_staff_id GROUP BY s.id, staff ORDER BY n DESC`);
+  for (const w of wl) console.log(`  ${w.staff} — ${w.n} (${w.done} solved)`);
+
   process.exit(0);
 })().catch((e) => { console.error('VERIFY FAILED:', e.message); process.exit(1); });
