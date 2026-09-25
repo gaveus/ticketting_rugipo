@@ -139,10 +139,15 @@ router.get('/stats', async (req, res) => {
   ]);
   const stats = { open, assigned, inProgress, waitingStudent, escalated, resolvedToday, closed, thisMonth, myTickets };
   const recent = await db.all(`SELECT t.id, t.ticket_number, t.status, t.priority, t.created_at, t.student_name, t.matric_no, t.department,
-            c.name AS category, i.name AS issue
+            c.name AS category, i.name AS issue,
+            s.full_name AS assigned,
+            (SELECT h.changed_by FROM ticket_status_history h WHERE h.ticket_id = t.id AND h.new_status IN ('resolved','closed')
+                AND h.changed_by IS NOT NULL AND h.changed_by NOT IN ('student','system')
+                ORDER BY h.id DESC LIMIT 1) AS resolved_by
      FROM tickets t
      JOIN ticket_categories c ON c.id = t.category_id
      JOIN ticket_issue_types i ON i.id = t.issue_type_id
+     LEFT JOIN users s ON s.id = t.assigned_staff_id
      WHERE 1=1 AND ${scope.sql}
      ORDER BY t.created_at DESC LIMIT 8`, ...scope.params);
   const topIssues = await db.all(`SELECT i.name AS issue, c.name AS category, COUNT(*)::int AS n

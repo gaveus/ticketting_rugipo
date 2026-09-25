@@ -147,7 +147,19 @@ export default function StaffTicket() {
   }
 
   const staffMsgs = messages.filter((m) => ['staff', 'senior', 'admin'].includes(m.sender_role));
-  const attendedBy = staffMsgs.length > 0 ? staffMsgs[staffMsgs.length - 1].sender_name : null;
+  // "Attended by" must also credit the officer who changed the complaint's
+  // stage (resolved / closed / rejected). A resolve writes a status-history
+  // line, NOT a chat message, so messages alone would keep saying "Not yet"
+  // even after a solve — exactly what happened on RGP-2026-F0006.
+  const solvedStages = ['resolved', 'closed', 'rejected'];
+  const resolverEntry = Array.isArray(history)
+    ? [...history].reverse().find((h) => solvedStages.includes(h.new_status)
+        && h.changed_by && !['student', 'system'].includes(h.changed_by))
+    : null;
+  const lastStaffMsgName = staffMsgs.length > 0 ? staffMsgs[staffMsgs.length - 1].sender_name : null;
+  const attendedBy = solvedStages.includes(ticket.status) && resolverEntry
+    ? resolverEntry.changed_by
+    : lastStaffMsgName;
 
   const studentMsgs = messages.filter((m) => m.visibility === 'student');
   const internalMsgs = messages.filter((m) => m.visibility === 'internal');

@@ -268,7 +268,7 @@ export default function AdminOverview() {
                         <td>{row.student_name}<br /><span className="muted" style={{ fontSize: '.8rem' }}>{row.matric_no}</span></td>
                         <td style={{ fontSize: '.84rem' }}>{row.category || '—'}</td>
                         <td><span className={`badge badge--${row.status}`}>{STATUS_LABELS[row.status]}</span></td>
-                        <td className="muted">{row.assigned || 'Unassigned'}</td>
+                        <td className="muted">{row.assigned || (row.resolved_by ? `${row.resolved_by} (resolved)` : 'Unassigned')}</td>
                         <td className="muted" style={{ fontSize: '.8rem' }}>{fmtDateTime(row.created_at)}</td>
                         <td>›</td>
                       </tr>
