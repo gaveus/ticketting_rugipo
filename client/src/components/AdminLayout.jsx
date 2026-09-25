@@ -143,27 +143,21 @@ export default function AdminLayout() {
   const isAdmin = user?.role === 'admin';
 
   // One flat menu — Heritage: the navigation list is short, keep it together.
+  // All the administration screens (accounts, master data, services, updates)
+  // live under one entry; the tabs live on the Administration page itself.
   const navItems = React.useMemo(() => [
     { to: '/admin/dashboard', search: '', label: 'Overview', icon: LayoutDashboard, end: true },
     { to: '/admin/tickets', search: '', label: 'All complaints', icon: Ticket, count: badges?.open },
     { to: '/admin/inbox', search: '', label: 'Student questions', icon: Mail, count: badges?.unread },
     ...(isSenior ? [{ to: '/admin/escalations', search: '', label: 'Escalations', icon: ArrowUp, count: badges?.escalated }] : []),
     { to: '/admin/analytics', search: '', label: 'Reports', icon: TrendingUp },
-    ...(isSenior ? [
-      { to: '/admin/settings', search: '?tab=accounts', label: 'Staff accounts', icon: User },
-      { to: '/admin/audit', search: '', label: 'Activity log', icon: ShieldCheck },
-      { to: '/admin/settings', search: '?tab=masterdata', label: 'Faculties & departments', icon: School },
-      { to: '/admin/settings', search: '?tab=catalogue', label: 'Support services', icon: ClipboardList },
-      { to: '/admin/settings', search: '?tab=updates', label: 'Homepage updates', icon: Megaphone },
-    ] : []),
-    { to: '/admin/settings', search: '', label: 'Settings', icon: Settings, end: true },
+    ...(isSenior ? [{ to: '/admin/settings', search: '', label: 'Administration', icon: Settings }] : []),
   ], [isSenior, badges]);
 
   /** Active = same path AND same tab query (Administration tabs share one path). */
   function isActive(it) {
     if (location.pathname !== it.to) return false;
     if (it.end) return location.pathname === it.to && !location.search;
-    if (it.search) return location.search === it.search;
     return true;
   }
 
@@ -292,8 +286,13 @@ export default function AdminLayout() {
             <Link to="/admin/escalations" className={location.pathname === '/admin/escalations' ? 'is-active' : ''}>
               <span className="bn-ic"><ArrowUp size={16} /></span>Escalated</Link>
           )}
-          <Link to="/admin/settings" className={location.pathname === '/admin/settings' ? 'is-active' : ''}>
-            <span className="bn-ic"><Settings size={16} /></span>Settings</Link>
+          {isSenior ? (
+            <Link to="/admin/settings" className={location.pathname === '/admin/settings' || location.pathname === '/admin/audit' ? 'is-active' : ''}>
+              <span className="bn-ic"><Settings size={16} /></span>Admin</Link>
+          ) : (
+            <Link to="/admin/profile" className={location.pathname === '/admin/profile' ? 'is-active' : ''}>
+              <span className="bn-ic"><User size={16} /></span>Profile</Link>
+          )}
         </nav>
       </div>
     </div>

@@ -85,8 +85,13 @@ app.use(express.static(dist, {
   setHeaders(res) { res.setHeader('Access-Control-Allow-Origin', '*'); },
 }));
 // The staff portal stays unlisted: no sitemap entry, and /admin is excluded
-// from indexing in the SPA's index.html.
-app.get(/^\/(?!api\/).*/, (_req, res) => res.sendFile(path.join(dist, 'index.html')));
+// from indexing in the SPA's index.html. index.html is never cached — a phone
+// must always get the newest build instead of an old page asking for deleted
+// JS files (that is what blank-broke the whole site on one phone).
+app.get(/^\/(?!api\/|assets\/).*/, (_req, res) => {
+  res.setHeader('Cache-Control', 'no-store, must-revalidate');
+  res.sendFile(path.join(dist, 'index.html'));
+});
 
 // Central error handler — no internals leak to clients.
 // eslint-disable-next-line no-unused-vars

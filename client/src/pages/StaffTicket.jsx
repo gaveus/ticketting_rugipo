@@ -17,16 +17,25 @@ import { STATUS_LABELS } from '../components/Layout.jsx';
 /** One tidy dropdown for any "stage" move that is not Resolve / Escalate. */
 function StageMenu({ allowed, busy, isEscalated, isSeniorPlus, onPick }) {
   const [open, setOpen] = useState(false);
+  const ref = React.useRef(null);
+  useEffect(() => {
+    function onDoc(e) { if (ref.current && !ref.current.contains(e.target)) setOpen(false); }
+    function onKey(e) { if (e.key === 'Escape') setOpen(false); }
+    document.addEventListener('click', onDoc);
+    document.addEventListener('keydown', onKey);
+    return () => { document.removeEventListener('click', onDoc); document.removeEventListener('keydown', onKey); };
+  }, []);
   if (!allowed.length) return null;
   return (
-    <div className="menu-wrap">
+    <div className="menu-wrap" ref={ref}>
       <button type="button" className="btn btn--outline btn--sm" aria-haspopup="menu" aria-expanded={open}
         disabled={busy || (isEscalated && !isSeniorPlus)}
         onClick={() => setOpen((o) => !o)}>
         Change stage <ChevronDown size={13} style={{ verticalAlign: '-2px', marginLeft: 3 }} />
       </button>
       {open && (
-        <div className="menu-list" role="menu" onMouseLeave={() => setOpen(false)}>
+        <div className="menu-list menu-list--sheet" role="menu">
+          <div className="menu-list__grip" aria-hidden="true" />
           {allowed.map((s) => (
             <button key={s} role="menuitem" type="button"
               onClick={() => { setOpen(false); onPick(s); }}

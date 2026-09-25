@@ -224,6 +224,10 @@ a { color: var(--green); }
   padding: 22px;
 }
 .section { padding: 44px 0; }
+/* When both classes share one element, the .section shorthand would wipe the
+   container's side padding — pages would touch the screen edges on phones. */
+.section.container { padding: 44px 20px; }
+@media (max-width: 640px) { .section.container { padding: 28px 16px; } }
 .section__title { font-size: 1.4rem; margin: 0 0 6px; color: var(--green-deep); }
 .section__sub { color: var(--muted); margin: 0 0 22px; }
 

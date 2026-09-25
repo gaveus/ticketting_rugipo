@@ -101,7 +101,7 @@ const CATEGORIES = [
     { name: 'amount', label: 'How much did you pay?', type: 'text', placeholder: 'e.g. 45,500' },
     { name: 'paymentDate', label: 'When did you make the payment?', type: 'text', placeholder: 'e.g. 12 March 2026' },
     { name: 'paymentChannel', label: 'How did you pay?', type: 'select',
-      options: ['Online (card / transfer in the portal)', 'Bank branch', 'POS', 'USSD', 'Other'] },
+      options: ['Transfer', 'Bank branch', 'POS', 'Other'] },
   ]],
   ['Receipt', 'Receipt generation, download and printing problems.', 2, [
     { name: 'receiptType', label: 'Which receipt is it? (school fees, departmental dues…)', type: 'text' },

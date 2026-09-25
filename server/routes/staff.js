@@ -77,6 +77,21 @@ function requireSuper(req, res, next) {
 }
 
 /**
+ * Which student questions a desk should see. Matched against the question's
+ * subject in plain words a student would actually write — "payment", money,
+ * receipt or Appiawave for the payment desk; anything about the portal,
+ * results, registration, email or admission for the portal desk. A subject
+ * with none of these words stays with ICT Support.
+ */
+function specialtyNeedles(specialty) {
+  const words = specialty === 'payment'
+    ? ['payment', 'paid', 'pay%', 'money', 'debit', 'receipt', 'appia%', 'transfer', 'refund']
+    : ['portal', 'login', 'log in', 'sign in', 'password', 'result%', 'course', 'registr%',
+       'admission', 'cbt', 'exam%', 'print', 'email', 'account', 'school fees', 'profile', 'student'];
+  return words.map((w) => `%${w}%`);
+}
+
+/**
  * A complaint's desk. 'payment' = anything about the money itself: debited
  * but not reflecting, expired payment links, failed charges — AND receipt
  * complaints that carry payment/debit evidence (a student showing HOW they
@@ -156,6 +171,14 @@ router.get('/inbox', async (req, res) => {
   const like = q ? `%${q.replace(/[%_]/g, (c) => `\\${c}`)}%` : null;
   const where = [];
   const params = [];
+  // Seniors see only the questions their desk would handle — ICT Support sees
+  // everything, because first-line is the doorway for every student.
+  const seniorOnly = req.user?.role === 'senior' && req.user.specialty;
+  if (seniorOnly) {
+    const needles = specialtyNeedles(seniorOnly);
+    where.push(`(${needles.map(() => 'LOWER(cm.subject) LIKE ?').join(' OR ')})`);
+    params.push(...needles);
+  }
   if (like) {
     where.push(`(cm.sender_name ILIKE ? OR cm.email ILIKE ? OR COALESCE(cm.matric_no,'') ILIKE ?
        OR COALESCE(cm.phone,'') ILIKE ? OR cm.subject ILIKE ? OR cm.message ILIKE ?)`);
@@ -278,10 +301,18 @@ router.post('/inbox/:id/close', async (req, res) => {
 /** Sidebar badges — light query for the shell's count pills. */
 router.get('/badges', async (req, res) => {
   const scope = deskScope(req.user); // seniors count only their own desk
+  // A senior's "new questions" badge counts only what their desk would handle
+  // — a payment question never lights up for a portal engineer.
+  const seniorOnly = req.user?.role === 'senior' && req.user.specialty;
+  const seniorWhere = seniorOnly
+    ? `(${specialtyNeedles(seniorOnly).map(() => 'LOWER(subject) LIKE ?').join(' OR ')})`
+    : '';
+  const seniorParams = seniorOnly ? specialtyNeedles(seniorOnly) : [];
   const [openRow, escRow, unreadRow, waitingRow] = await Promise.all([
     db.get(`SELECT COUNT(*)::int AS n FROM tickets WHERE status = 'open' AND ${scope.sql}`, ...scope.params),
     db.get(`SELECT COUNT(*)::int AS n FROM tickets WHERE status = 'escalated' AND ${scope.sql}`, ...scope.params),
-    db.get(`SELECT COUNT(*)::int AS n FROM contact_messages WHERE closed_at IS NULL AND status = 'new'`),
+    db.get(`SELECT COUNT(*)::int AS n FROM contact_messages WHERE closed_at IS NULL AND status = 'new'
+       ${seniorOnly ? `AND (${seniorWhere})` : ''}`, ...seniorParams),
     db.get(`SELECT COUNT(*)::int AS n FROM tickets WHERE status = 'in_progress' AND assigned_staff_id = ?`, req.user.id),
   ]);
   res.json({ open: openRow.n, escalated: escRow.n, unread: unreadRow.n, mine: waitingRow.n });
@@ -292,8 +323,7 @@ router.get('/badges', async (req, res) => {
  * The trend series respects ?day= ?month= ?year= ?from=&to= — any day, month,
  * year or custom range (defaults to the last 7 days) — and the trend deltas
  * compare the chosen window with the equal-length window before it.
- */
-/** Safe query — one flaky database call must never take the whole dashboard down. */
+ *//** Safe query — one flaky database call must never take the whole dashboard down. */
 async function safe(fn, fallback) {
   try { return await fn(); } catch (e) { console.error('[overview] section failed:', e?.message || e); return fallback; }
 }
@@ -310,6 +340,13 @@ router.get('/overview', async (req, res) => {
 
   // Which window are we charting? Same grammar as the Reports page.
   const q = req.query || {};
+  // A senior's "questions waiting" number counts only what their desk would
+  // handle — the money questions belong to the payment pair alone.
+  const seniorOnly = req.user?.role === 'senior' && req.user.specialty;
+  const seniorOnlyWhere = seniorOnly
+    ? specialtyNeedles(seniorOnly).map(() => 'LOWER(subject) LIKE ?').join(' OR ')
+    : '';
+  const seniorOnlyParams = seniorOnly ? specialtyNeedles(seniorOnly) : [];
   let label = 'Last 7 days';
   let seriesWhere;
   let grain = 'day'; // day | hour | month
@@ -417,7 +454,7 @@ router.get('/overview', async (req, res) => {
     FROM audit_logs ORDER BY created_at DESC LIMIT 6`), []);
 
   const unreadRow = await safe(() => db.get(`SELECT COUNT(*)::int AS n FROM contact_messages
-    WHERE closed_at IS NULL AND status = 'new'`), { n: 0 });
+    WHERE closed_at IS NULL AND status = 'new'${seniorOnlyWhere ? ` AND (${seniorOnlyWhere})` : ''}`, ...seniorOnlyParams), { n: 0 });
 
   res.json({
     period: { label },
@@ -455,7 +492,7 @@ router.get('/notifications', async (req, res) => {
     ...studentReplies.map((m) => ({ kind: 'student_reply', id: `r${m.ticket_id}${new Date(m.created_at).getTime()}`, ticketId: m.ticket_id, title: m.ticket_number, detail: `${m.sender_name} replied to ICT`, at: m.created_at, to: `/admin/tickets/${m.ticket_id}` })),
     ...escalations.map((e) => ({ kind: 'escalation', id: `e${e.ticket_id}${new Date(e.created_at).getTime()}`, ticketId: e.ticket_id, title: e.ticket_number, detail: `Escalated by ${e.escalated_by_name || 'ICT'} — ${e.specialty === 'payment' ? 'payment' : 'portal'} desk`, at: e.created_at, to: `/admin/tickets/${e.ticket_id}` })),
     ...inboxWaiting.map((m) => ({ kind: 'inbox', id: `m${m.id}`, inboxId: m.id, title: m.subject, detail: `${m.sender_name} is waiting for a reply`, at: m.created_at, to: `/admin/inbox` })),
-  ].sort((a, b) => new Date(b.at) - new Date(a.at)).slice(0, 12);
+  ].filter(Boolean).sort((a, b) => new Date(b.at) - new Date(a.at)).slice(0, 12);
   res.json({ items, waiting: inboxWaiting.length });
 });
 

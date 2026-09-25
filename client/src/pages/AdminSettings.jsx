@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { useAuth } from '../auth.jsx';
-import { User, ClipboardList, School, Megaphone, Star, ChevronDown, Reply, ArrowUp, ArrowUpDown, KeyRound, Ban, Check, ArrowLeftRight, Undo2 } from 'lucide-react';
+import { User, ClipboardList, School, Megaphone, Star, MoreVertical, Reply, ArrowUp, ArrowUpDown, KeyRound, Ban, Check, ArrowLeftRight, Undo2 } from 'lucide-react';
 import { api } from '../auth.jsx';
 
 const TABS = [
@@ -158,6 +158,18 @@ function Accounts({ readOnly = false } = {}) {
   const [view, setView] = useState('list'); // 'list' → 'create' (breadcrumb flow)
   const [confirmSuper, setConfirmSuper] = useState(null); // { id, email, input }
   const [menuOpen, setMenuOpen] = useState(null); // staff id with open action menu
+  React.useEffect(() => {
+    // Close on any click outside the open menu or its button, and on Escape.
+    function onDoc(e) {
+      const t = e.target;
+      if (t.closest && (t.closest('.menu-list') || t.closest('.kebab-btn'))) return;
+      setMenuOpen(null);
+    }
+    function onKey(e) { if (e.key === 'Escape') setMenuOpen(null); }
+    document.addEventListener('click', onDoc);
+    document.addEventListener('keydown', onKey);
+    return () => { document.removeEventListener('click', onDoc); document.removeEventListener('keydown', onKey); };
+  }, []);
   const [confirmRole, setConfirmRole] = useState(null); // { staff, role, specialty } before a role change
   const [resetPw, setResetPw] = useState(null); // { staff, done } confirm-then-reset
 
@@ -201,7 +213,7 @@ function Accounts({ readOnly = false } = {}) {
           You can view everyone here, but creating or changing accounts is reserved for the Super ICT Support.
         </div>
         <div className="table-wrap mt">
-          <table>
+          <table className="acc-table">
             <thead><tr><th>Name</th><th>Role</th><th>Status</th></tr></thead>
             <tbody>
               {staffList.map((s) => (
@@ -231,8 +243,8 @@ function Accounts({ readOnly = false } = {}) {
       </div>
       <div className="card">
           <div className="table-wrap mt">
-            <table>
-              <thead><tr><th>Name</th><th>Role</th><th>Status</th><th>Actions</th></tr></thead>
+            <table className="acc-table">
+              <thead><tr><th>Name</th><th>Role</th><th className="th-hide-sm">Status</th><th className="th-menu">Menu</th></tr></thead>
               <tbody>
                 {staffList.map((s) => (
                   <tr key={s.id} style={!s.active ? { opacity: .55 } : undefined}>
@@ -248,13 +260,19 @@ function Accounts({ readOnly = false } = {}) {
                         <span className="muted" style={{ fontSize: '.8rem' }}>Protected</span>
                       ) : (
                         <div style={{ position: 'relative' }}>
-                          <button type="button" className="btn btn--outline btn--sm"
-                            aria-haspopup="menu" aria-expanded={menuOpen === s.id}
+                          <button type="button" className="kebab-btn" aria-haspopup="menu" aria-expanded={menuOpen === s.id}
+                            aria-label={`Menu for ${s.full_name}`}
+                            title="Manage this account"
                             onClick={() => setMenuOpen(menuOpen === s.id ? null : s.id)}>
-                            Actions <ChevronDown size={13} style={{ verticalAlign: '-2px', marginLeft: 3 }} />
+                            <MoreVertical size={17} />
                           </button>
                           {menuOpen === s.id && (
-                            <div className="menu-list" role="menu" onMouseLeave={() => setMenuOpen(null)}>
+                            <div className="menu-list menu-list--sheet" role="menu">
+                              <div className="menu-list__grip" aria-hidden="true" />
+                              <div className="menu-list__who">
+                                <strong>{s.full_name}</strong>
+                                <small>{roleBadge(s)}</small>
+                              </div>
                               <button role="menuitem" type="button"
                                 onClick={() => { setMenuOpen(null); setConfirmRole({ staff: s, role: s.role === 'senior' ? 'staff' : 'senior', specialty: s.specialty || 'portal' }); }}>
                                 {s.role === 'senior'

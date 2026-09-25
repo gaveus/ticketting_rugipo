@@ -11,3 +11,5 @@ test-photo.png
 .DS_Store
 Thumbs.db
 DEPLOY.md
+.vercel
+.env*

@@ -310,10 +310,9 @@ export default function NewTicket() {
                   <label className="field"><span>How did you pay? <em>*</em></span>
                     <select value={payment.paymentMethod} onChange={(e) => setPayment({ ...payment, paymentMethod: e.target.value })}>
                       <option value="">Select how you paid…</option>
-                      <option>Online (card / transfer in the portal)</option>
+                      <option>Transfer</option>
                       <option>Bank branch</option>
                       <option>POS</option>
-                      <option>USSD</option>
                       <option>Other</option>
                     </select>
                   </label>
