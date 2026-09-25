@@ -240,10 +240,19 @@ export default function AdminTickets({ mine = false }) {
                   <span className="tkt-officer">
                     {t.assigned_staff}
                     <small>
-                      {t.attended_by_name && t.attended_by_name !== t.assigned_staff
-                        ? `attended by ${t.attended_by_name}`
-                        : 'not attended yet'}
+                      {t.resolved_by_name && ['resolved', 'closed'].includes(t.status)
+                        ? (t.resolved_by_name !== t.assigned_staff
+                          ? `resolved by ${t.resolved_by_name}`
+                          : 'resolved this complaint')
+                        : t.attended_by_name && t.attended_by_name !== t.assigned_staff
+                          ? `attended by ${t.attended_by_name}`
+                          : 'not attended yet'}
                     </small>
+                  </span>
+                ) : t.resolved_by_name && ['resolved', 'closed'].includes(t.status) ? (
+                  <span className="tkt-officer">
+                    {t.resolved_by_name}
+                    <small>resolved (no hand-over)</small>
                   </span>
                 ) : t.attended_by_name ? (
                   <span className="tkt-officer">

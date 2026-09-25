@@ -530,7 +530,10 @@ router.get('/tickets', async (req, res) => {
             (SELECT COUNT(*) FROM ticket_status_history h WHERE h.ticket_id = t.id AND h.new_status = 'escalated') AS escalation_count,
             (SELECT COUNT(*)::int FROM ticket_messages m WHERE m.ticket_id = t.id AND m.sender_role = 'student') AS student_replies,
             (SELECT MAX(m.created_at) FROM ticket_messages m WHERE m.ticket_id = t.id AND m.sender_role = 'student') AS last_student_reply,
-            (SELECT m.sender_name FROM ticket_messages m WHERE m.ticket_id = t.id AND m.sender_role IN ('staff','senior','admin') ORDER BY m.id DESC LIMIT 1) AS attended_by_name
+            (SELECT m.sender_name FROM ticket_messages m WHERE m.ticket_id = t.id AND m.sender_role IN ('staff','senior','admin') ORDER BY m.id DESC LIMIT 1) AS attended_by_name,
+            (SELECT h.changed_by FROM ticket_status_history h WHERE h.ticket_id = t.id AND h.new_status IN ('resolved','closed')
+                AND h.changed_by IS NOT NULL AND h.changed_by NOT IN ('student','system')
+                ORDER BY h.id DESC LIMIT 1) AS resolved_by_name
      FROM tickets t
      JOIN ticket_categories c ON c.id = t.category_id
      JOIN ticket_issue_types i ON i.id = t.issue_type_id
@@ -1198,7 +1201,7 @@ router.get('/admin/audit-log', requireStaff, async (req, res) => {
       LEFT JOIN ticket_issue_types i ON i.id = t.issue_type_id
       ${where.length ? 'WHERE ' + where.join(' AND ') : ''}
       ORDER BY a.created_at DESC
-      LIMIT ?`, limit);
+      LIMIT ?`, ...params, limit);
   const actions = await db.all(`SELECT action, COUNT(*)::int AS n FROM audit_logs GROUP BY action ORDER BY n DESC`);
   res.json({ entries: rows, actions });
 });
