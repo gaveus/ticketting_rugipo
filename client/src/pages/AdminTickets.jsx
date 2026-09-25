@@ -97,6 +97,12 @@ export default function AdminTickets({ mine = false }) {
     { key: 'escalated', label: 'Escalated' },
     { key: 'resolved', label: 'Resolved' },
   ];
+  // A senior only ever works their own desk, so the service dropdown offers
+  // just the services their desk actually has — no dead options.
+  const isSeniorOnly = user?.role === 'senior';
+  const visibleCategories = isSeniorOnly && list
+    ? meta.categories.filter((c) => list.some((t) => t.category === c.name))
+    : meta.categories;
   const counts = (key) => {
     if (!list) return null;
     if (!key) return list.length;
@@ -166,7 +172,7 @@ export default function AdminTickets({ mine = false }) {
           onChange={(e) => set('q', e.target.value)} aria-label="Search complaints" />
         <select value={filters.category} onChange={(e) => set('category', e.target.value)} aria-label="Filter by service">
           <option value="">All services</option>
-          {meta.categories.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
+          {visibleCategories.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
         </select>
         <select value={when} onChange={(e) => setWhen(e.target.value)} aria-label="Show complaints from">
           <option value="">Any time</option>
