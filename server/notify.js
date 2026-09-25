@@ -101,9 +101,14 @@ async function queueEmail({ ticketId = null, to, subject, body, kind = 'notifica
 }
 
 /**
- * Deliver everything still queued (oldest first, bounded per call).
- * Safe to call concurrently — each row is marked 'sending' before the API call
- * so two callers never send the same email twice.
+ * Send everything still waiting (oldest first, bounded per pass):
+ *   queued  → never attempted, or re-queued for retry
+ *   sending → the function died mid-send (serverless freeze, crash); rows
+ *             older than 5 minutes are reclaimed automatically so one crashed
+ *             send can never block the whole queue forever
+ * Every attempt is counted; after 5 the row is parked as 'failed' with the
+ * last error recorded so staff can investigate instead of silently retrying.
+ * Safe to run concurrently — each row is claimed before the API call.
  */
 let delivering = false;
 async function deliverPending() {
@@ -111,19 +116,25 @@ async function deliverPending() {
   delivering = true;
   try {
     for (;;) {
+      // Reclaim stale "sending" rows (crashed mid-delivery) older than 5 min.
+      await db.run(`UPDATE outbound_emails SET status='queued'
+                    WHERE status='sending' AND created_at < now() - interval '5 minutes'`);
       const batch = await db.all(
         `SELECT * FROM outbound_emails WHERE status = 'queued' ORDER BY id LIMIT 20`);
       if (batch.length === 0) break;
       for (const m of batch) {
         const claimed = await db.run(
-          `UPDATE outbound_emails SET status='sending' WHERE id=? AND status='queued'`, m.id);
+          `UPDATE outbound_emails SET status='sending', attempts = attempts + 1
+           WHERE id=? AND status='queued'`, m.id);
         if (!claimed.changes) continue; // someone else took it
         try {
           await sendViaBrevo(m);
-          await db.run(`UPDATE outbound_emails SET status='sent', sent_at=now() WHERE id=?`, m.id);
+          await db.run(`UPDATE outbound_emails SET status='sent', sent_at=now(), error=NULL WHERE id=?`, m.id);
         } catch (e) {
-          await db.run(`UPDATE outbound_emails SET status='failed', error=? WHERE id=?`,
-            String(e.message).slice(0, 400), m.id);
+          // Park after 5 attempts; otherwise leave queued for the next pass.
+          const giveUp = (m.attempts || 0) + 1 >= 5;
+          await db.run(`UPDATE outbound_emails SET status=?, error=? WHERE id=?`,
+            giveUp ? 'failed' : 'queued', String(e.message).slice(0, 400), m.id);
         }
       }
     }
@@ -138,4 +149,21 @@ async function retryFailed() {
   return deliverPending();
 }
 
-module.exports = { queueEmail, deliverPending, retryFailed, brevoConfigured, smtpConfigured };
+/**
+ * Background sweeper — every minute it delivers anything waiting: new mail,
+ * mail that failed transiently, and mail stranded by a crashed function.
+ * This is what makes email work on serverless (Vercel), where a frozen
+ * function could otherwise leave rows stuck mid-send with nothing to retry
+ * them. The timer is `.unref()`ed so it never keeps a process alive on its
+ * own; on an idle serverless instance it simply never fires again.
+ */
+let sweeperStarted = false;
+function startEmailSweeper() {
+  if (sweeperStarted || !brevoConfigured()) return;
+  sweeperStarted = true;
+  setInterval(() => {
+    deliverPending().catch((e) => console.error('[notify] sweep:', e.message));
+  }, 60 * 1000).unref();
+}
+
+module.exports = { queueEmail, deliverPending, retryFailed, startEmailSweeper, brevoConfigured, smtpConfigured };

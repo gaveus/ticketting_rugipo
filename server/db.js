@@ -373,6 +373,7 @@ CREATE INDEX IF NOT EXISTS idx_announcements_recent ON announcements(created_at 
      CHECK (status IN ('queued','sending','pending_credentials','sent','failed'));`);
   // Branded HTML body column (email design system).
   await db.exec(`ALTER TABLE outbound_emails ADD COLUMN IF NOT EXISTS html TEXT;`);
+  await db.exec(`ALTER TABLE outbound_emails ADD COLUMN IF NOT EXISTS attempts INTEGER NOT NULL DEFAULT 0;`);
   // Staff profile columns (gender, photo, forced password change).
   await db.exec(`ALTER TABLE users ADD COLUMN IF NOT EXISTS gender TEXT;`);
   await db.exec(`ALTER TABLE users ADD COLUMN IF NOT EXISTS profile_image TEXT;`);

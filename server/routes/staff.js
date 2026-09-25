@@ -1050,6 +1050,37 @@ router.post('/admin/staff/:id/active', requireAdmin, async (req, res) => {
 });
 
 /**
+ * Delete a staff account permanently — Super only. For clearing out test
+ * accounts or staff who have left, which also frees their email for a new
+ * account. Nothing in the history breaks: names are stored as text on every
+ * record, links that may be empty are set to NULL, and only the raw
+ * hand-over rows (which cannot exist without the person) are removed.
+ * Your own account and other Super ICT Support accounts are protected.
+ */
+router.delete('/admin/staff/:id', requireAdmin, async (req, res) => {
+  const target = await db.get('SELECT * FROM users WHERE id = ?', req.params.id);
+  if (!target) return res.status(404).json({ error: 'Account not found' });
+  if (target.id === req.user.id) return res.status(400).json({ error: 'You cannot delete your own account' });
+  if (target.role === 'admin') {
+    return res.status(403).json({ error: 'Super ICT Support accounts are protected — remove their powers first' });
+  }
+  // Detach the account from everything that references it.
+  await db.run('UPDATE tickets SET assigned_staff_id = NULL WHERE assigned_staff_id = ?', target.id);
+  await db.run('DELETE FROM ticket_assignments WHERE staff_id = ?', target.id);
+  await db.run('UPDATE ticket_assignments SET assigned_by = NULL WHERE assigned_by = ?', target.id);
+  await db.run('UPDATE ticket_payment_details SET verified_by = NULL WHERE verified_by = ?', target.id);
+  await db.run('UPDATE escalations SET escalated_by = NULL WHERE escalated_by = ?', target.id);
+  await db.run('UPDATE escalations SET resolved_by = NULL WHERE resolved_by = ?', target.id);
+  await db.run('UPDATE ticket_status_history SET changed_by = NULL WHERE changed_by = ?', target.id);
+  await db.run('UPDATE contact_messages SET replied_by = NULL WHERE replied_by = ?', target.id);
+  await db.run('UPDATE audit_logs SET actor_id = NULL WHERE actor_id = ?', target.id);
+  await db.run('UPDATE announcements SET created_by = NULL WHERE created_by = ?', target.id);
+  await db.run('DELETE FROM users WHERE id = ?', target.id);
+  audit(req, 'staff.delete', target.id, { email: target.email, name: target.full_name });
+  res.json({ ok: true });
+});
+
+/**
  * Reset a staff member's password — Super only. The account is left active
  * and NOT forced through first-login setup (must_change_password stays 0) so
  * the password you choose works immediately; the colleague changes it later

@@ -12,6 +12,7 @@ const staffRoutes = require('./routes/staff');
 const authRoutes = require('./routes/portalAuth');
 
 const { setupChatWebsockets } = require('./ws');
+const { startEmailSweeper } = require('./notify');
 
 const app = express();
 app.set('trust proxy', 1);
@@ -130,6 +131,9 @@ if (!process.env.VERCEL) {
 readyPromise()
   .then(() => {
     const srv = app.listen(PORT, () => console.log(`RUGIPO ICT Ticketing API on http://localhost:${PORT}`));
+    // Email sweeper — retries queued/stranded mail every minute so nothing
+    // sent through the queue can be silently lost.
+    startEmailSweeper();
     // Real-time chat: attaches to the same HTTP server (same port, no extra config).
     const wsApi = setupChatWebsockets(srv);
     // REST chat endpoints push through the same hub so both sides update

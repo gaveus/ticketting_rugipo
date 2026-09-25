@@ -1,7 +1,8 @@
 import React, { useEffect, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { useSearchParams } from 'react-router-dom';
 import { useAuth } from '../auth.jsx';
-import { User, ClipboardList, School, Megaphone, Star, MoreVertical, Reply, ArrowUp, ArrowUpDown, KeyRound, Ban, Check, ArrowLeftRight, Undo2 } from 'lucide-react';
+import { User, ClipboardList, School, Megaphone, Star, MoreVertical, Reply, ArrowUp, ArrowUpDown, KeyRound, Ban, Check, ArrowLeftRight, Undo2, Trash2 } from 'lucide-react';
 import { api } from '../auth.jsx';
 
 const TABS = [
@@ -149,6 +150,51 @@ function Updates({ readOnly = false } = {}) {
   );
 }
 
+/* ---------------------- floating account actions menu ---------------------- */
+
+/**
+ * The 3-dot account menu, rendered straight into the page (a portal) instead
+ * of inside the accounts table. Inside the table it was being clipped by the
+ * table's own scrolling box — the "buried menu" — so now it floats above
+ * everything: a drop-down under the button on wide screens, a bottom sheet
+ * on phones. Nothing can bury it.
+ */
+function AccountActionsPortal({ staff, anchor, onClose, children }) {
+  useEffect(() => {
+    function onDoc(e) {
+      const t = e.target;
+      if (t.closest && (t.closest('.acc-menu') || t.closest('.kebab-btn'))) return;
+      onClose();
+    }
+    function onKey(e) { if (e.key === 'Escape') onClose(); }
+    document.addEventListener('click', onDoc);
+    document.addEventListener('keydown', onKey);
+    return () => { document.removeEventListener('click', onDoc); document.removeEventListener('keydown', onKey); };
+  }, [onClose]);
+
+  if (!anchor) return null;
+  const isPhone = window.matchMedia('(max-width: 700px)').matches;
+  let style;
+  if (isPhone) {
+    style = undefined; // the sheet class pins it to the bottom edge
+  } else {
+    // Open downward — unless there is no room, then upward. Both top and
+    // bottom are always set explicitly: the base .menu-list CSS sets its own
+    // top, which would otherwise fight the fixed positioning.
+    const openDown = anchor.bottom + 300 < window.innerHeight;
+    style = openDown
+      ? { position: 'fixed', top: anchor.bottom + 6, bottom: 'auto', right: Math.max(8, window.innerWidth - anchor.right) }
+      : { position: 'fixed', top: 'auto', bottom: window.innerHeight - anchor.top + 6, right: Math.max(8, window.innerWidth - anchor.right) };
+  }
+  return createPortal(
+    <div className={`menu-list acc-menu ${isPhone ? 'menu-list--sheet' : ''}`} style={style} role="menu">
+      {!isPhone && <div className="menu-list__who"><strong>{staff.full_name}</strong><small>{staff.email}</small></div>}
+      {children}
+    </div>,
+    document.body
+  );
+}
+
 /* ------------------------------ accounts ------------------------------ */
 
 function Accounts({ readOnly = false } = {}) {
@@ -158,20 +204,9 @@ function Accounts({ readOnly = false } = {}) {
   const [view, setView] = useState('list'); // 'list' → 'create' (breadcrumb flow)
   const [confirmSuper, setConfirmSuper] = useState(null); // { id, email, input }
   const [menuOpen, setMenuOpen] = useState(null); // staff id with open action menu
-  React.useEffect(() => {
-    // Close on any click outside the open menu or its button, and on Escape.
-    function onDoc(e) {
-      const t = e.target;
-      if (t.closest && (t.closest('.menu-list') || t.closest('.kebab-btn'))) return;
-      setMenuOpen(null);
-    }
-    function onKey(e) { if (e.key === 'Escape') setMenuOpen(null); }
-    document.addEventListener('click', onDoc);
-    document.addEventListener('keydown', onKey);
-    return () => { document.removeEventListener('click', onDoc); document.removeEventListener('keydown', onKey); };
-  }, []);
   const [confirmRole, setConfirmRole] = useState(null); // { staff, role, specialty } before a role change
   const [resetPw, setResetPw] = useState(null); // { staff, done } confirm-then-reset
+  const [confirmDelete, setConfirmDelete] = useState(null); // { staff } before permanent removal
 
   function load() { api('/staff/admin/staff').then((d) => setStaffList(d.staff)).catch((e) => setMsg({ ok: '', err: e.message })); }
   useEffect(load, []);
@@ -259,47 +294,15 @@ function Accounts({ readOnly = false } = {}) {
                       ) : s.role === 'admin' ? (
                         <span className="muted" style={{ fontSize: '.8rem' }}>Protected</span>
                       ) : (
-                        <div style={{ position: 'relative' }}>
-                          <button type="button" className="kebab-btn" aria-haspopup="menu" aria-expanded={menuOpen === s.id}
-                            aria-label={`Menu for ${s.full_name}`}
-                            title="Manage this account"
-                            onClick={() => setMenuOpen(menuOpen === s.id ? null : s.id)}>
-                            <MoreVertical size={17} />
-                          </button>
-                          {menuOpen === s.id && (
-                            <div className="menu-list menu-list--sheet" role="menu">
-                              <div className="menu-list__grip" aria-hidden="true" />
-                              <div className="menu-list__who">
-                                <strong>{s.full_name}</strong>
-                                <small>{roleBadge(s)}</small>
-                              </div>
-                              <button role="menuitem" type="button"
-                                onClick={() => { setMenuOpen(null); setConfirmRole({ staff: s, role: s.role === 'senior' ? 'staff' : 'senior', specialty: s.specialty || 'portal' }); }}>
-                                {s.role === 'senior'
-                                  ? <><Reply size={13} style={{ verticalAlign: '-2px', marginRight: 5 }} />Return to ICT Support</>
-                                  : <><ArrowUp size={13} style={{ verticalAlign: '-2px', marginRight: 5 }} />Make Portal Support Engineer</>}
-                              </button>
-                              {s.role === 'senior' && (
-                                <button role="menuitem" type="button"
-                                  onClick={() => { setMenuOpen(null); act(`/staff/admin/staff/${s.id}/specialty`, { specialty: s.specialty === 'payment' ? 'portal' : 'payment' }); }}>
-                                  <ArrowLeftRight size={13} style={{ verticalAlign: '-2px', marginRight: 5 }} />Switch to {s.specialty === 'payment' ? 'Portal Support Engineer' : 'Payment Gateway Provider'}
-                                </button>
-                              )}
-                              <button role="menuitem" type="button"
-                                onClick={() => { setMenuOpen(null); setConfirmSuper({ id: s.id, email: s.email, input: '' }); }}>
-                                <Star size={13} style={{ verticalAlign: '-2px', marginRight: 5 }} />Grant Super ICT Support
-                              </button>
-                              <button role="menuitem" type="button"
-                                onClick={() => { setMenuOpen(null); setResetPw({ staff: s, done: false }); }}>
-                                <KeyRound size={13} style={{ verticalAlign: '-2px', marginRight: 5 }} />Reset their password
-                              </button>
-                              <button role="menuitem" type="button" className="menu-list__danger"
-                                onClick={() => { setMenuOpen(null); act(`/staff/admin/staff/${s.id}/active`, { active: !s.active }); }}>
-                                {s.active ? <><Ban size={13} style={{ verticalAlign: '-2px', marginRight: 5 }} />Disable this account</> : <><Check size={13} style={{ verticalAlign: '-2px', marginRight: 5 }} />Enable this account</>}
-                              </button>
-                            </div>
-                          )}
-                        </div>
+                        <button type="button" className="kebab-btn" aria-haspopup="menu" aria-expanded={menuOpen?.id === s.id}
+                          aria-label={`Menu for ${s.full_name}`}
+                          title="Manage this account"
+                          onClick={(e) => {
+                            const r = e.currentTarget.getBoundingClientRect();
+                            setMenuOpen(menuOpen?.id === s.id ? null : { id: s.id, anchor: { top: r.top, bottom: r.bottom, left: r.left, right: r.right } });
+                          }}>
+                          <MoreVertical size={17} />
+                        </button>
                       )}
                     </td>
                   </tr>
@@ -311,6 +314,45 @@ function Accounts({ readOnly = false } = {}) {
             <Star size={12} style={{ verticalAlign: '-2px', marginRight: 4, color: '#d97706' }} />Super ICT Support can sign in, assign any ticket, create accounts and promote others.
           </p>
         </div>
+
+      {/* The account menu floats above everything (portal) — it can never be
+          clipped by the table or buried under the mobile bar again. */}
+      {menuOpen && (() => {
+        const s = staffList.find((x) => x.id === menuOpen.id);
+        if (!s) return null;
+        return (
+          <AccountActionsPortal staff={s} anchor={menuOpen.anchor} onClose={() => setMenuOpen(null)}>
+            <button role="menuitem" type="button"
+              onClick={() => { setMenuOpen(null); setConfirmRole({ staff: s, role: s.role === 'senior' ? 'staff' : 'senior', specialty: s.specialty || 'portal' }); }}>
+              {s.role === 'senior'
+                ? <><Reply size={13} style={{ verticalAlign: '-2px', marginRight: 5 }} />Return to ICT Support</>
+                : <><ArrowUp size={13} style={{ verticalAlign: '-2px', marginRight: 5 }} />Make Portal Support Engineer</>}
+            </button>
+            {s.role === 'senior' && (
+              <button role="menuitem" type="button"
+                onClick={() => { setMenuOpen(null); act(`/staff/admin/staff/${s.id}/specialty`, { specialty: s.specialty === 'payment' ? 'portal' : 'payment' }); }}>
+                <ArrowLeftRight size={13} style={{ verticalAlign: '-2px', marginRight: 5 }} />Switch to {s.specialty === 'payment' ? 'Portal Support Engineer' : 'Payment Gateway Provider'}
+              </button>
+            )}
+            <button role="menuitem" type="button"
+              onClick={() => { setMenuOpen(null); setConfirmSuper({ id: s.id, email: s.email, input: '' }); }}>
+              <Star size={13} style={{ verticalAlign: '-2px', marginRight: 5 }} />Grant Super ICT Support
+            </button>
+            <button role="menuitem" type="button"
+              onClick={() => { setMenuOpen(null); setResetPw({ staff: s, done: false }); }}>
+              <KeyRound size={13} style={{ verticalAlign: '-2px', marginRight: 5 }} />Reset their password
+            </button>
+            <button role="menuitem" type="button"
+              onClick={() => { setMenuOpen(null); act(`/staff/admin/staff/${s.id}/active`, { active: !s.active }); }}>
+              {s.active ? <><Ban size={13} style={{ verticalAlign: '-2px', marginRight: 5 }} />Disable this account</> : <><Check size={13} style={{ verticalAlign: '-2px', marginRight: 5 }} />Enable this account</>}
+            </button>
+            <button role="menuitem" type="button" className="menu-list__danger"
+              onClick={() => { setMenuOpen(null); setConfirmDelete({ staff: s }); }}>
+              <Trash2 size={13} style={{ verticalAlign: '-2px', marginRight: 5 }} />Delete this account
+            </button>
+          </AccountActionsPortal>
+        );
+      })()}
 
       {confirmRole && (
         <div className="card mt" style={{ borderLeft: '4px solid var(--green)' }}>
@@ -394,6 +436,29 @@ function Accounts({ readOnly = false } = {}) {
               Confirm promotion
             </button>
             <button className="btn btn--outline btn--sm" onClick={() => setConfirmSuper(null)}>Cancel</button>
+          </div>
+        </div>
+      )}
+
+      {confirmDelete && (
+        <div className="card mt" style={{ borderLeft: '4px solid #991b1b' }}>
+          <strong style={{ display: 'flex', alignItems: 'center', gap: 6 }}><Trash2 size={16} /> Delete {confirmDelete.staff.full_name}'s account</strong>
+          <p className="muted" style={{ fontSize: '.88rem' }}>
+            This removes the account completely — they can no longer sign in, and their email
+            becomes free to use again for a new account. Complaints they handled keep their name
+            on the record, so nothing in the history is lost. This cannot be undone.
+          </p>
+          <div className="row">
+            <button className="btn btn--sm menu-list__danger" style={{ background: '#991b1b', color: '#fff', border: 'none' }}
+              onClick={async () => {
+                if (await act(`/staff/admin/staff/${confirmDelete.staff.id}`, { method: 'DELETE' })) {
+                  setMsg({ ok: `${confirmDelete.staff.full_name}'s account has been deleted.`, err: '' });
+                  setConfirmDelete(null);
+                }
+              }}>
+              Delete permanently
+            </button>
+            <button className="btn btn--outline btn--sm" onClick={() => setConfirmDelete(null)}>Cancel</button>
           </div>
         </div>
       )}
